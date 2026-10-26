@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import TaskCreate, TaskPublic, TaskStatus, TaskType, TaskUpdate, exam_status
+from app.models import TaskCreate, TaskPublic, TaskStatus, TaskType, TaskUpdate, exam_status
 
 
 def homework(**overrides):

@@ -2,7 +2,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, ConfigDict, NaiveDatetime, model_validator
+from sqlmodel import Field, SQLModel
 
 
 class TaskType(StrEnum):
@@ -35,13 +36,11 @@ def to_local_time(value: datetime) -> datetime:
 LocalDatetime = Annotated[datetime, AfterValidator(to_local_time)]
 
 
-class TaskBase(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
-
+class TaskBase(SQLModel):
     title: str = Field(min_length=1, max_length=200)
-    course: str = Field(min_length=1, max_length=100)
+    course: str = Field(min_length=1, max_length=100, index=True)
     type: TaskType
-    due_at: LocalDatetime
+    due_at: NaiveDatetime = Field(index=True)  # local time, see to_local_time
     estimated_hours: float | None = Field(default=None, gt=0, le=1000)
     status: TaskStatus | None = None
     link: str | None = Field(default=None, min_length=1, max_length=2000)
@@ -49,7 +48,15 @@ class TaskBase(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
 
 
+class Task(TaskBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+
 class TaskCreate(TaskBase):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    due_at: LocalDatetime
+
     @model_validator(mode="after")
     def check_fields_match_type(self):
         if self.type == TaskType.EXAM:
@@ -65,14 +72,15 @@ class TaskCreate(TaskBase):
         return self
 
 
-class TaskUpdate(BaseModel):
+class TaskUpdate(SQLModel):
     """PATCH body: every field is optional; only the fields that were sent change.
 
-    Whether the fields fit the task's type is checked after merging with the
-    stored task, since the type may come from the stored task.
+    Sending null clears an optional field. Whether the fields fit the task's
+    type is checked after merging with the stored task (see app/main.py),
+    since the type may come from the stored task.
     """
 
-    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     title: str | None = Field(default=None, min_length=1, max_length=200)
     course: str | None = Field(default=None, min_length=1, max_length=100)
@@ -98,3 +106,10 @@ class TaskPublic(TaskBase):
         if self.type == TaskType.EXAM:
             self.status = exam_status(self.due_at, datetime.now())
         return self
+
+
+class CourseTasks(SQLModel):
+    """One course and its tasks, for the by-course view."""
+
+    course: str
+    tasks: list[TaskPublic]

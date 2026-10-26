@@ -4,3 +4,4 @@ __pycache__/
 database.db
 # Personal notes (not part of the project)
 notes/
+data/
