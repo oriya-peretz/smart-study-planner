@@ -1,7 +1,9 @@
+from datetime import datetime, timezone
+
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import TaskCreate, TaskStatus, TaskType, TaskUpdate
+from app.schemas import TaskCreate, TaskPublic, TaskStatus, TaskType, TaskUpdate, exam_status
 
 
 def homework(**overrides):
@@ -50,15 +52,18 @@ def test_local_file_path_is_accepted_as_link():
     assert task.link == r"C:\Users\me\Documents\ex3.docx"
 
 
-def test_exam_with_location_and_notes_is_valid():
-    task = TaskCreate(**exam(location="Building 2, room 104", notes="Open book"))
+def test_exam_with_optional_fields_is_valid():
+    task = TaskCreate(
+        **exam(location="Building 2, room 104", estimated_hours=12, notes="Open book")
+    )
     assert task.location == "Building 2, room 104"
+    assert task.estimated_hours == 12
     assert task.status is None
 
 
 @pytest.mark.parametrize(
     "field, value",
-    [("estimated_hours", 3), ("status", "todo"), ("link", "https://example.com")],
+    [("status", "todo"), ("link", "https://example.com")],
 )
 def test_exam_rejects_non_exam_fields(field, value):
     with pytest.raises(ValidationError, match="an exam cannot have"):
@@ -98,3 +103,29 @@ def test_invalid_values_are_rejected(overrides):
 def test_update_keeps_only_sent_fields():
     update = TaskUpdate(status="done")
     assert update.model_dump(exclude_unset=True) == {"status": TaskStatus.DONE}
+
+
+def test_exam_status_depends_on_its_date():
+    now = datetime(2026, 11, 1, 12, 0)
+    assert exam_status(datetime(2026, 11, 1, 11, 59), now) == TaskStatus.DONE
+    assert exam_status(datetime(2026, 11, 1, 12, 0), now) == TaskStatus.DONE
+    assert exam_status(datetime(2026, 11, 1, 12, 1), now) == TaskStatus.TODO
+
+
+def test_public_exam_gets_status_from_its_date():
+    past = TaskPublic(id=1, **exam(due_at="2020-01-01T09:00"))
+    future = TaskPublic(id=2, **exam(due_at="2099-01-01T09:00"))
+    assert past.status == TaskStatus.DONE
+    assert future.status == TaskStatus.TODO
+
+
+def test_public_non_exam_keeps_its_own_status():
+    task = TaskPublic(id=1, status="in_progress", **homework(due_at="2020-01-01T09:00"))
+    assert task.status == TaskStatus.IN_PROGRESS
+
+
+def test_time_zone_is_converted_to_local_time():
+    task = TaskCreate(**homework(due_at="2026-11-20T10:00+00:00"))
+    assert task.due_at.tzinfo is None
+    expected = datetime(2026, 11, 20, 10, 0, tzinfo=timezone.utc).astimezone()
+    assert task.due_at == expected.replace(tzinfo=None)

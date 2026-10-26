@@ -1,7 +1,8 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 
 class TaskType(StrEnum):
@@ -19,8 +20,19 @@ class TaskStatus(StrEnum):
 
 
 # Fields that only make sense for one kind of task.
+# An exam's status is not sent by the client: it is derived from its date.
 EXAM_ONLY_FIELDS = ("location",)
-NON_EXAM_FIELDS = ("estimated_hours", "status", "link")
+NON_EXAM_FIELDS = ("status", "link")
+
+
+def to_local_time(value: datetime) -> datetime:
+    """Keep every date as local time without a time zone, so they compare safely."""
+    if value.tzinfo is not None:
+        return value.astimezone().replace(tzinfo=None)
+    return value
+
+
+LocalDatetime = Annotated[datetime, AfterValidator(to_local_time)]
 
 
 class TaskBase(BaseModel):
@@ -29,7 +41,7 @@ class TaskBase(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     course: str = Field(min_length=1, max_length=100)
     type: TaskType
-    due_at: datetime
+    due_at: LocalDatetime
     estimated_hours: float | None = Field(default=None, gt=0, le=1000)
     status: TaskStatus | None = None
     link: str | None = Field(default=None, min_length=1, max_length=2000)
@@ -65,7 +77,7 @@ class TaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     course: str | None = Field(default=None, min_length=1, max_length=100)
     type: TaskType | None = None
-    due_at: datetime | None = None
+    due_at: LocalDatetime | None = None
     estimated_hours: float | None = Field(default=None, gt=0, le=1000)
     status: TaskStatus | None = None
     link: str | None = Field(default=None, min_length=1, max_length=2000)
@@ -73,5 +85,16 @@ class TaskUpdate(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
 
 
+def exam_status(due_at: datetime, now: datetime) -> TaskStatus:
+    """An exam is done once its date and time have passed."""
+    return TaskStatus.DONE if due_at <= now else TaskStatus.TODO
+
+
 class TaskPublic(TaskBase):
     id: int
+
+    @model_validator(mode="after")
+    def set_exam_status(self):
+        if self.type == TaskType.EXAM:
+            self.status = exam_status(self.due_at, datetime.now())
+        return self
