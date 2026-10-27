@@ -1,0 +1,6 @@
+[browser]
+gatherUsageStats = false  # Streamlit collects usage stats unless you opt out
+
+[server]
+headless = true
+address = "localhost"  # only this machine; a container overrides it

@@ -5,7 +5,26 @@ what is due, when, how long it will take, and where the work lives.
 Tasks can be viewed in one list by urgency, or grouped by course.
 A later version adds an AI assistant that suggests a study plan from the student's workload and deadlines.
 
-This repository currently holds the **backend** (EX1): a FastAPI service with SQLite storage.
+The repository holds two services:
+
+- `backend/`: a FastAPI service with SQLite storage (the API below)
+- `frontend/`: a Streamlit page in the browser that talks to the backend over HTTP
+
+## Quick start
+
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/). Run each service in its own terminal:
+
+```bash
+cd backend
+uv run fastapi dev app/main.py
+```
+
+```bash
+cd frontend
+uv run streamlit run streamlit_app.py
+```
+
+Open http://localhost:8501 for the app, or http://localhost:8000/docs for the API documentation.
 
 ## Task model
 
@@ -41,16 +60,17 @@ Both list views accept `?include_done=false` to hide done tasks.
 
 Interactive documentation is served at `/docs` while the server runs.
 
-## Run locally
+## Backend
 
-Requires [uv](https://docs.astral.sh/uv/getting-started/installation/). uv installs the Python version from `.python-version` (3.14) and the locked dependencies.
+### Run locally
+
+From `backend/`. uv installs the Python version from `.python-version` (3.14) and the locked dependencies.
 
 ```bash
-uv sync
 uv run fastapi dev app/main.py
 ```
 
-Open http://localhost:8000/docs. Data is stored in `data/app.db`, which is created on first start.
+Open http://localhost:8000/docs. Data is stored in `backend/data/app.db`, which is created on first start.
 
 ### Configuration
 
@@ -60,7 +80,9 @@ Open http://localhost:8000/docs. Data is stored in `data/app.db`, which is creat
 
 See `.env.example`.
 
-## Run the tests
+### Run the tests
+
+From `backend/`:
 
 ```bash
 uv run pytest
@@ -69,7 +91,9 @@ uv run pytest
 Tests use an in-memory database, so they never touch `data/app.db`.
 `tests/test_restart.py` checks that tasks survive a server restart, using a temporary database file.
 
-## Run with Docker
+### Run with Docker
+
+From `backend/`:
 
 ```bash
 docker build -t smart-study-planner .
@@ -88,7 +112,7 @@ docker run -d --name planner -p 127.0.0.1:8000:8000 -v planner-data:/app/data sm
 The image sets `TZ=Asia/Jerusalem`, so an exam becomes `done` at the right local time.
 `docker volume rm planner-data` deletes the data permanently.
 
-## Example requests
+### Example requests
 
 ```bash
 curl -X POST http://localhost:8000/tasks -H "Content-Type: application/json" \
@@ -101,19 +125,39 @@ curl -X PATCH http://localhost:8000/tasks/1 -H "Content-Type: application/json" 
 curl -X DELETE http://localhost:8000/tasks/1
 ```
 
+## Frontend
+
+From `frontend/`, with the backend running:
+
+```bash
+uv run streamlit run streamlit_app.py
+```
+
+Open http://localhost:8501. Add a task from **Add a task** at the top; choose **By urgency** or **By course**; expand a task to see its details, edit it, mark it done or delete it.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `BACKEND_URL` | `http://127.0.0.1:8000` | where the frontend sends API requests |
+
+`127.0.0.1` rather than `localhost`: on Windows, `localhost` tries IPv6 first and adds about 2 seconds to every request.
+
 ## Project layout
 
 ```
-app/
-  main.py      routes and startup
-  models.py    task table and request/response models with validation
-  db.py        database engine and per-request session
-  ordering.py  the urgency and by-course views
-tests/         pytest tests
-Dockerfile
+backend/
+  app/
+    main.py        routes and startup
+    models.py      task table and request/response models with validation
+    db.py          database engine and per-request session
+    ordering.py    the urgency and by-course views
+  tests/           pytest tests
+  Dockerfile
+frontend/
+  streamlit_app.py the page
+  api.py           every HTTP call to the backend, with user-facing error messages
 ```
 
 ## AI-use note
 
-Development was assisted by Claude (Claude Code). It drafted the project setup, models, routes, tests, Dockerfile and this README from my specifications.
+Development was assisted by Claude (Claude Code). It drafted the project setup, models, routes, tests, Dockerfile, the Streamlit frontend and this README from my specifications.
 I reviewed each change, ran the test suite (`uv run pytest`) and checked the API manually against a running server, including invalid input, missing records and persistence across restarts.
