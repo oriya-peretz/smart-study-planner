@@ -58,8 +58,10 @@ if is_rtl():
           /* Streamlit's built-in "(required)" marker, in Hebrew. */
           [data-testid="stWidgetLabelRequired"] { font-size: 0; }
           [data-testid="stWidgetLabelRequired"]::after { content: "(חובה)"; font-size: .8rem; }
-          /* The language switch keeps "English | עברית" in one order and inside its column. */
-          .st-key-lang-picker { direction: ltr; }
+          /* The two switches lay out left to right, so their rounded ends stay on the
+             outside; the views are listed in reverse below, so "By course" stays first
+             when read from the right. */
+          .st-key-lang-picker, .st-key-view { direction: ltr; }
         </style>
         """
     )
@@ -102,6 +104,11 @@ st.html(
     """
     <style>
       [data-testid="stMainBlockContainer"] { max-width: 1320px; }
+      /* The "+" card for a new course: one large, thin gold plus that fills it. */
+      .st-key-new-course button { min-height: 11rem; }
+      .st-key-new-course button p { font-size: 6rem; font-weight: 200; line-height: 1;
+                                    color: #B08D57; }
+      .st-key-new-course button:hover p { color: #8A6D3B; }
     </style>
     <div class="wordmark">Smart Study Planner</div><div class="gold-rule"></div>
     """
@@ -115,7 +122,7 @@ if notice := st.session_state.pop("notice", None):
 view_col, toggle_col, add_col = st.columns([2.2, 1.6, 1.2], vertical_alignment="center")
 view = view_col.segmented_control(
     t("view"),
-    list(VIEWS),
+    list(reversed(VIEWS)) if is_rtl() else list(VIEWS),
     default="urgency",
     format_func=lambda code: t(VIEWS[code]),
     key="view",

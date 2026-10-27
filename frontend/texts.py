@@ -16,8 +16,8 @@ LANGUAGES = {"en": "English", "he": "עברית"}
 TEXTS: dict[str, dict[str, str]] = {
     # ---- Landing, log in, sign up ----
     "tagline": {
-        "en": "Every exam, assignment and project, in one place.",
-        "he": "כל המבחנים, המטלות והפרויקטים, במקום אחד.",
+        "en": "Every exam, assignment and project, in one place",
+        "he": "כל המבחנים, המטלות והפרויקטים, במקום אחד",
     },
     "log_in": {"en": "Log in", "he": "התחברות"},
     "sign_up": {"en": "Sign up", "he": "הרשמה"},
@@ -52,7 +52,7 @@ TEXTS: dict[str, dict[str, str]] = {
     "open_tasks_many": {"en": "{n} open tasks", "he": "{n} משימות פתוחות"},
     "settings": {"en": "Settings", "he": "הגדרות"},
     "no_tasks_yet": {"en": "No tasks yet", "he": "אין עדיין משימות"},
-    "new_course": {"en": "New course", "he": "קורס חדש"},
+    "add_new_course": {"en": "Add a new course", "he": "הוספת קורס חדש"},
     "open_link": {"en": "Open link", "he": "פתיחת הקישור"},
     "local_path": {
         "en": "Local file or folder (copy the path, then paste it in File Explorer):",

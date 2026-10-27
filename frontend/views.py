@@ -133,12 +133,13 @@ def course_grid(
         for column, group in zip(columns, cards[start : start + CARDS_PER_ROW]):
             with column, st.container(border=True, height="stretch"):
                 if group is None:
-                    st.space("small")
+                    # A large gold "+" fills the card (styled in streamlit_app.py);
+                    # hovering shows what it does.
                     if st.button(
-                        t("new_course"),
+                        "+",
                         key="new-course",
                         type="tertiary",
-                        icon=":material/add:",
+                        help=t("add_new_course"),
                         width="stretch",
                     ):
                         dialogs.open_dialog("add-course")

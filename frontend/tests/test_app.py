@@ -183,7 +183,9 @@ def test_by_course_lists_every_task_inside_its_course_card(backend):
         "Statistics" not in label for label in labels
     )  # the card says it already
     assert "No tasks yet" in " ".join(c.value for c in at.caption)
-    assert at.button(key="new-course").label == "New course"
+    new_course = at.button(key="new-course")
+    assert new_course.label == "+"
+    assert new_course.help == "Add a new course"  # shown on hover
 
 
 def test_add_task_from_a_course_card_preselects_that_course(backend):
@@ -435,3 +437,14 @@ def test_hebrew_lines_keep_english_parts_in_order(backend):
     # stay separate parts in the order they were written.
     assert label.count("\u200f  ·  \u200f") == 4
     assert label.index("Quiz 2") < label.index("Statistics")
+
+
+def test_hebrew_by_course_lists_views_from_the_right_and_explains_the_plus(backend):
+    backend.patch("/auth/me").mock(return_value=httpx.Response(200, json=ME))
+    at = logged_in(backend, [AUTOMATA], groups=[{"course": AUTOMATA, "tasks": []}])
+    at.button_group(key="view").set_value("course").run()
+    at.button_group(key="lang-picker").set_value("he").run()
+    assert at.button_group(key="view").value == "course"  # the view survives the switch
+    # Laid out left to right, so the reversed list puts "By course" on the right.
+    assert at.button_group(key="view").options == ["לפי דחיפות", "לפי קורס"]
+    assert at.button(key="new-course").help == "הוספת קורס חדש"
