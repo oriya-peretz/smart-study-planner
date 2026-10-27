@@ -112,7 +112,7 @@ def course_card(group: api.CourseTasks, courses: list[api.Course], today: date) 
     ):
         dialogs.open_dialog("add-task", course_id=cid)
     if settings_col.button(
-        t("settings"),
+        t("edit_course"),
         key=f"course-settings-{cid}",
         type="tertiary",
         icon=":material/tune:",

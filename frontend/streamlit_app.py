@@ -62,6 +62,11 @@ if is_rtl():
              outside; the views are listed in reverse below, so "By course" stays first
              when read from the right. */
           .st-key-lang-picker, .st-key-view { direction: ltr; }
+          /* A toggle's knob slides to the right when on; right to left it would
+             slide out of its track, leaving only a gold bar. The label stays Hebrew. */
+          [data-testid="stCheckbox"] label > div:not([data-testid="stWidgetLabel"]) {
+            direction: ltr;
+          }
         </style>
         """
     )

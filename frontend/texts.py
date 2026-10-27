@@ -50,7 +50,7 @@ TEXTS: dict[str, dict[str, str]] = {
     },
     "open_tasks_one": {"en": "1 open task", "he": "משימה פתוחה אחת"},
     "open_tasks_many": {"en": "{n} open tasks", "he": "{n} משימות פתוחות"},
-    "settings": {"en": "Settings", "he": "הגדרות"},
+    "edit_course": {"en": "Edit course", "he": "עריכת קורס"},
     "no_tasks_yet": {"en": "No tasks yet", "he": "אין עדיין משימות"},
     "add_new_course": {"en": "Add a new course", "he": "הוספת קורס חדש"},
     "open_link": {"en": "Open link", "he": "פתיחת הקישור"},
@@ -82,7 +82,7 @@ TEXTS: dict[str, dict[str, str]] = {
     "dlg_add_task": {"en": "Add a task", "he": "הוספת משימה"},
     "dlg_edit_task": {"en": "Edit task", "he": "עריכת משימה"},
     "dlg_new_course": {"en": "New course", "he": "קורס חדש"},
-    "dlg_course_settings": {"en": "Course settings", "he": "הגדרות הקורס"},
+    "dlg_edit_course": {"en": "Edit course", "he": "עריכת קורס"},
     "need_course_first": {
         "en": "Add a course first: choose **By course**, then the **+** card.",
         "he": "קודם מוסיפים קורס: בוחרים **לפי קורס**, ואז את הכרטיס **+**.",

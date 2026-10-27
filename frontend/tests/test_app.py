@@ -186,6 +186,7 @@ def test_by_course_lists_every_task_inside_its_course_card(backend):
     new_course = at.button(key="new-course")
     assert new_course.label == "+"
     assert new_course.help == "Add a new course"  # shown on hover
+    assert at.button(key="course-settings-2").label == "Edit course"
 
 
 def test_add_task_from_a_course_card_preselects_that_course(backend):
@@ -448,3 +449,4 @@ def test_hebrew_by_course_lists_views_from_the_right_and_explains_the_plus(backe
     # Laid out left to right, so the reversed list puts "By course" on the right.
     assert at.button_group(key="view").options == ["לפי דחיפות", "לפי קורס"]
     assert at.button(key="new-course").help == "הוספת קורס חדש"
+    assert at.button(key="course-settings-1").label == "עריכת קורס"
