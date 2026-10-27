@@ -29,7 +29,7 @@ def test_create_returns_task_with_id_and_default_status(client):
 
 def test_create_exam_gets_status_from_date(client):
     assert create(client, **EXAM)["status"] == "todo"
-    assert create(client, **{**EXAM, "due_at": "2020-01-15T09:00:00"})["status"] == "done"
+    assert create(client, **{**EXAM, "due_at": "2020-01-15T09:00:00"})["status"] == "past"
 
 
 def test_create_invalid_task_is_422_and_not_saved(client):
@@ -100,9 +100,10 @@ def test_list_is_ordered_by_urgency(client):
     done = create(client, **{**HOMEWORK, "title": "done", "due_at": "2026-11-01T10:00:00", "status": "done"})
     titles = [task["title"] for task in client.get("/tasks").json()]
     assert titles == ["sooner", "later", "done"]
-    open_titles = [task["title"] for task in client.get("/tasks?include_done=false").json()]
-    assert open_titles == ["sooner", "later"]
     assert {later["id"], sooner["id"], done["id"]} == {t["id"] for t in client.get("/tasks").json()}
+    create(client, **{**EXAM, "title": "past exam", "due_at": "2020-01-15T09:00:00"})
+    open_titles = [task["title"] for task in client.get("/tasks?include_done=false").json()]
+    assert open_titles == ["sooner", "later"]  # done tasks and past exams are hidden
 
 
 def test_by_course_groups_and_orders(client):

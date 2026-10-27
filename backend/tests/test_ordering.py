@@ -23,7 +23,7 @@ def test_done_tasks_come_last_even_if_earlier():
     assert by_urgency([done, open_task]) == [open_task, done]
 
 
-def test_past_exam_counts_as_done():
+def test_past_exam_sorts_with_finished_tasks():
     past_exam = task(1, "A", datetime(2020, 1, 1), type="exam")
     homework = task(2, "A", datetime(2099, 1, 1))
     assert by_urgency([past_exam, homework]) == [homework, past_exam]

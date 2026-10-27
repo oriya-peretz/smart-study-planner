@@ -51,6 +51,8 @@ def due_label(task: api.Task, today: date) -> str:
     when = f"{due:%a %d %b %Y, %H:%M}"
     if task["status"] == "done":
         return f"{when} · :green[done]"
+    if task["status"] == "past":  # an exam whose date has passed
+        return f"{when} · :gray[past]"
     days = (due.date() - today).days
     if days < 0:
         return f"{when} · :red[overdue by {-days} day{'s' if days < -1 else ''}]"
@@ -233,7 +235,9 @@ if notice := st.session_state.pop("notice", None):
 add_box = st.container()
 
 view = st.radio("View", VIEWS, horizontal=True, key="view")
-include_done = st.toggle("Show done tasks", value=True, key="include-done")
+include_done = st.toggle(
+    "Show done tasks and past exams", value=True, key="include-done"
+)
 
 try:
     with st.spinner("Loading tasks..."):

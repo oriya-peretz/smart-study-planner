@@ -18,6 +18,11 @@ class TaskStatus(StrEnum):
     TODO = "todo"
     IN_PROGRESS = "in_progress"
     DONE = "done"
+    PAST = "past"  # exams only: the exam's date has passed
+
+
+# Statuses that need no more work; they sort last and can be hidden.
+FINISHED_STATUSES = (TaskStatus.DONE, TaskStatus.PAST)
 
 
 # Fields that only make sense for one kind of task.
@@ -67,6 +72,8 @@ class TaskCreate(TaskBase):
             sent = [name for name in EXAM_ONLY_FIELDS if getattr(self, name) is not None]
             if sent:
                 raise ValueError(f"only an exam can have: {', '.join(sent)}")
+            if self.status == TaskStatus.PAST:
+                raise ValueError("only an exam can be past")
             if self.status is None:
                 self.status = TaskStatus.TODO
         return self
@@ -94,8 +101,11 @@ class TaskUpdate(SQLModel):
 
 
 def exam_status(due_at: datetime, now: datetime) -> TaskStatus:
-    """An exam is done once its date and time have passed."""
-    return TaskStatus.DONE if due_at <= now else TaskStatus.TODO
+    """An exam is past once its date and time have passed.
+
+    Past, not done: the date passing does not mean the exam was taken.
+    """
+    return TaskStatus.PAST if due_at <= now else TaskStatus.TODO
 
 
 class TaskPublic(TaskBase):

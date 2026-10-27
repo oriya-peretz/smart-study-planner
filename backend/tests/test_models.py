@@ -70,6 +70,11 @@ def test_exam_rejects_non_exam_fields(field, value):
         TaskCreate(**exam(**{field: value}))
 
 
+def test_only_an_exam_can_be_past():
+    with pytest.raises(ValidationError, match="only an exam can be past"):
+        TaskCreate(**homework(status="past"))
+
+
 def test_location_is_only_for_exams():
     with pytest.raises(ValidationError, match="only an exam can have"):
         TaskCreate(**homework(location="Room 104"))
@@ -107,15 +112,15 @@ def test_update_keeps_only_sent_fields():
 
 def test_exam_status_depends_on_its_date():
     now = datetime(2026, 11, 1, 12, 0)
-    assert exam_status(datetime(2026, 11, 1, 11, 59), now) == TaskStatus.DONE
-    assert exam_status(datetime(2026, 11, 1, 12, 0), now) == TaskStatus.DONE
+    assert exam_status(datetime(2026, 11, 1, 11, 59), now) == TaskStatus.PAST
+    assert exam_status(datetime(2026, 11, 1, 12, 0), now) == TaskStatus.PAST
     assert exam_status(datetime(2026, 11, 1, 12, 1), now) == TaskStatus.TODO
 
 
 def test_public_exam_gets_status_from_its_date():
     past = TaskPublic(id=1, **exam(due_at="2020-01-01T09:00"))
     future = TaskPublic(id=2, **exam(due_at="2099-01-01T09:00"))
-    assert past.status == TaskStatus.DONE
+    assert past.status == TaskStatus.PAST
     assert future.status == TaskStatus.TODO
 
 

@@ -2,16 +2,16 @@
 
 from collections.abc import Iterable
 
-from app.models import CourseTasks, TaskPublic, TaskStatus
+from app.models import FINISHED_STATUSES, CourseTasks, TaskPublic
 
 
 def urgency_key(task: TaskPublic) -> tuple:
-    """Open tasks before done ones; among them, the nearest date first.
+    """Open tasks before finished ones (done, or past exams); then the nearest date first.
 
     An overdue open task has the earliest date, so it comes first.
     The id breaks ties so the order is always the same.
     """
-    return (task.status == TaskStatus.DONE, task.due_at, task.id)
+    return (task.status in FINISHED_STATUSES, task.due_at, task.id)
 
 
 def by_urgency(tasks: Iterable[TaskPublic]) -> list[TaskPublic]:

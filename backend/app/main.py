@@ -6,7 +6,15 @@ from pydantic import ValidationError
 from sqlmodel import Session, select
 
 from app import db
-from app.models import CourseTasks, Task, TaskCreate, TaskPublic, TaskStatus, TaskType, TaskUpdate
+from app.models import (
+    FINISHED_STATUSES,
+    CourseTasks,
+    Task,
+    TaskCreate,
+    TaskPublic,
+    TaskType,
+    TaskUpdate,
+)
 from app.ordering import by_course, by_urgency
 
 
@@ -37,7 +45,7 @@ def get_or_404(session: Session, task_id: int) -> Task:
 def all_tasks(session: Session, include_done: bool) -> list[TaskPublic]:
     tasks = [TaskPublic.model_validate(task) for task in session.exec(select(Task))]
     if not include_done:
-        tasks = [task for task in tasks if task.status != TaskStatus.DONE]
+        tasks = [task for task in tasks if task.status not in FINISHED_STATUSES]
     return tasks
 
 

@@ -40,7 +40,7 @@ Open http://localhost:8501 for the app, or http://localhost:8000/docs for the AP
 | `location` | no, **exams only** | where the exam takes place |
 | `notes` | no | up to 2000 characters |
 
-An exam's `status` is never sent: it is `todo` until the exam's date and time pass, then `done`.
+An exam's `status` is never sent: it is `todo` until the exam's date and time pass, then `past` (past, not done: the date passing does not mean the exam was taken).
 Sending a field that does not fit the task's type returns `422`.
 
 ## API
@@ -55,8 +55,8 @@ Sending a field that does not fit the task's type returns `422`.
 | `PATCH /tasks/{id}` | change only the fields sent; `null` clears an optional field | 200 | 404, 422 |
 | `DELETE /tasks/{id}` | delete a task | 204 | 404 |
 
-**Urgency:** open tasks first, nearest `due_at` first (an overdue open task comes first); done tasks last.
-Both list views accept `?include_done=false` to hide done tasks.
+**Urgency:** open tasks first, nearest `due_at` first (an overdue open task comes first); done tasks and past exams last.
+Both list views accept `?include_done=false` to hide done tasks and past exams.
 
 Interactive documentation is served at `/docs` while the server runs.
 
@@ -109,7 +109,7 @@ docker rm -f planner
 docker run -d --name planner -p 127.0.0.1:8000:8000 -v planner-data:/app/data smart-study-planner
 ```
 
-The image sets `TZ=Asia/Jerusalem`, so an exam becomes `done` at the right local time.
+The image sets `TZ=Asia/Jerusalem`, so an exam becomes `past` at the right local time.
 `docker volume rm planner-data` deletes the data permanently.
 
 ### Example requests
