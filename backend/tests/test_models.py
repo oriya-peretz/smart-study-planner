@@ -1,10 +1,17 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
 
-from app.models import CoursePublic, TaskCreate, TaskPublic, TaskStatus, TaskType, TaskUpdate, exam_status
-
+from app.models import (
+    CoursePublic,
+    TaskCreate,
+    TaskPublic,
+    TaskStatus,
+    TaskType,
+    TaskUpdate,
+    exam_status,
+)
 
 COURSE = CoursePublic(id=1, name="Automata")
 
@@ -128,12 +135,14 @@ def test_public_exam_gets_status_from_its_date():
 
 
 def test_public_non_exam_keeps_its_own_status():
-    task = TaskPublic(id=1, course=COURSE, status="in_progress", **homework(due_at="2020-01-01T09:00"))
+    task = TaskPublic(
+        id=1, course=COURSE, status="in_progress", **homework(due_at="2020-01-01T09:00")
+    )
     assert task.status == TaskStatus.IN_PROGRESS
 
 
 def test_time_zone_is_converted_to_local_time():
     task = TaskCreate(**homework(due_at="2026-11-20T10:00+00:00"))
     assert task.due_at.tzinfo is None
-    expected = datetime(2026, 11, 20, 10, 0, tzinfo=timezone.utc).astimezone()
+    expected = datetime(2026, 11, 20, 10, 0, tzinfo=UTC).astimezone()
     assert task.due_at == expected.replace(tzinfo=None)

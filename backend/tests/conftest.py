@@ -26,8 +26,15 @@ def session() -> Iterator[Session]:
 
 def log_in(client: TestClient, email: str) -> TestClient:
     """Sign up, log in, and send the token with every later request of this client."""
-    assert client.post("/auth/signup", json={"email": email, "password": PASSWORD}).status_code == 201
-    token = client.post("/auth/login", json={"email": email, "password": PASSWORD}).json()["access_token"]
+    assert (
+        client.post(
+            "/auth/signup", json={"email": email, "password": PASSWORD}
+        ).status_code
+        == 201
+    )
+    token = client.post(
+        "/auth/login", json={"email": email, "password": PASSWORD}
+    ).json()["access_token"]
     client.headers["Authorization"] = f"Bearer {token}"
     return client
 
@@ -38,7 +45,9 @@ def make_client(session: Session) -> Iterator[Callable[..., TestClient]]:
     app.dependency_overrides[get_session] = lambda: session
 
     def make(email: str | None = None) -> TestClient:
-        client = TestClient(app)  # without `with`, the lifespan (and the real file) is never used
+        client = TestClient(
+            app
+        )  # without `with`, the lifespan (and the real file) is never used
         return log_in(client, email) if email else client
 
     yield make

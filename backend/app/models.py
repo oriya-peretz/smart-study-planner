@@ -2,7 +2,13 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import AfterValidator, ConfigDict, EmailStr, NaiveDatetime, model_validator
+from pydantic import (
+    AfterValidator,
+    ConfigDict,
+    EmailStr,
+    NaiveDatetime,
+    model_validator,
+)
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -122,7 +128,9 @@ class TaskCreate(TaskBase):
             if sent:
                 raise ValueError(f"an exam cannot have: {', '.join(sent)}")
         else:
-            sent = [name for name in EXAM_ONLY_FIELDS if getattr(self, name) is not None]
+            sent = [
+                name for name in EXAM_ONLY_FIELDS if getattr(self, name) is not None
+            ]
             if sent:
                 raise ValueError(f"only an exam can have: {', '.join(sent)}")
             if self.status == TaskStatus.PAST:
