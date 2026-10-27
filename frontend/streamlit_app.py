@@ -35,6 +35,9 @@ st.html(
       /* Streamlit's "Press Enter to submit form" and "16/254" hints inside text fields:
          noise for a user. max_chars still limits the length. */
       [data-testid="InputInstructions"] { display: none; }
+      /* The top bars keep one layout in both languages: the user on the far left,
+         the language switch on the far right. */
+      .st-key-top-bar, .st-key-landing-bar { direction: ltr; }
     </style>
     """
 )
@@ -47,7 +50,6 @@ if is_rtl():
         <style>
           [data-testid="stMain"], [role="dialog"] { direction: rtl; }
           .wordmark, .user-email, input[type="email"], code { direction: ltr; }
-          .user-email { text-align: right; }
           /* Markdown sets each block's direction from its first letter, so an English
              course name would sit on the left of a Hebrew card. */
           [data-testid="stMarkdownContainer"] { text-align: right; }
@@ -58,8 +60,15 @@ if is_rtl():
           /* Streamlit's built-in "(required)" marker, in Hebrew. */
           [data-testid="stWidgetLabelRequired"] { font-size: 0; }
           [data-testid="stWidgetLabelRequired"]::after { content: "(חובה)"; font-size: .8rem; }
-          /* The language switch keeps "English | עברית" in one order and inside its column. */
-          .st-key-lang-picker { direction: ltr; }
+          /* The two switches lay out left to right, so their rounded ends stay on the
+             outside; the views are listed in reverse below, so "By course" stays first
+             when read from the right. */
+          .st-key-lang-picker, .st-key-view { direction: ltr; }
+          /* A toggle's knob slides to the right when on; right to left it would
+             slide out of its track, leaving only a gold bar. The label stays Hebrew. */
+          [data-testid="stCheckbox"] label > div:not([data-testid="stWidgetLabel"]) {
+            direction: ltr;
+          }
         </style>
         """
     )
@@ -79,8 +88,10 @@ if not account.is_logged_in():
         </style>
         """
     )
-    _, switch_col = st.columns([2, 1.3])
-    account.language_switch(switch_col)
+    with st.container(key="landing-bar"):
+        _, switch_col = st.columns([2, 1.3])
+    with switch_col, st.container(horizontal=True, horizontal_alignment="right"):
+        account.language_switch()
     st.html(
         '<div class="wordmark hero">Smart Study Planner</div><div class="gold-rule"></div>'
     )
@@ -89,19 +100,31 @@ if not account.is_logged_in():
     account.landing()
     st.stop()
 
-user_col, switch_col, logout_col = st.columns([3, 1.4, 1], vertical_alignment="center")
-with user_col:  # html, because Markdown would turn the address into a mailto link
-    st.html(f'<p class="user-email">{html.escape(st.session_state["email"])}</p>')
-account.language_switch(switch_col)
-if logout_col.button(
-    t("log_out"), key="log-out", type="tertiary", icon=":material/logout:"
-):
-    account.log_out()
+# Far left: who is logged in, with Log out right beside it. Far right: the language.
+with st.container(key="top-bar"):
+    user_col, switch_col = st.columns([3, 1], vertical_alignment="center")
+with user_col, st.container(horizontal=True, vertical_alignment="center", gap="medium"):
+    # html, because Markdown would turn the address into a mailto link
+    st.html(
+        f'<p class="user-email">{html.escape(st.session_state["email"])}</p>',
+        width="content",
+    )
+    if st.button(
+        t("log_out"), key="log-out", type="tertiary", icon=":material/logout:"
+    ):
+        account.log_out()
+with switch_col, st.container(horizontal=True, horizontal_alignment="right"):
+    account.language_switch()
 
 st.html(
     """
     <style>
       [data-testid="stMainBlockContainer"] { max-width: 1320px; }
+      /* The "+" card for a new course: one large, thin gold plus that fills it. */
+      .st-key-new-course button { min-height: 11rem; }
+      .st-key-new-course button p { font-size: 6rem; font-weight: 200; line-height: 1;
+                                    color: #B08D57; }
+      .st-key-new-course button:hover p { color: #8A6D3B; }
     </style>
     <div class="wordmark">Smart Study Planner</div><div class="gold-rule"></div>
     """
@@ -115,7 +138,7 @@ if notice := st.session_state.pop("notice", None):
 view_col, toggle_col, add_col = st.columns([2.2, 1.6, 1.2], vertical_alignment="center")
 view = view_col.segmented_control(
     t("view"),
-    list(VIEWS),
+    list(reversed(VIEWS)) if is_rtl() else list(VIEWS),
     default="urgency",
     format_func=lambda code: t(VIEWS[code]),
     key="view",

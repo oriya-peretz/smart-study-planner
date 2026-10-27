@@ -293,4 +293,4 @@ def show_open(courses: list[api.Course], tasks: list[api.Task]) -> None:
                 close_dialog()
             else:
                 has_tasks = any(item["course_id"] == course["id"] for item in tasks)
-                _dialog("dlg_course_settings", edit_course, course, has_tasks)
+                _dialog("dlg_edit_course", edit_course, course, has_tasks)
