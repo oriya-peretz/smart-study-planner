@@ -26,12 +26,17 @@ uv run streamlit run streamlit_app.py
 
 Open http://localhost:8501 for the app, or http://localhost:8000/docs for the API documentation.
 
+## Courses
+
+A course has an `id` and a `name` (1-100 characters, unique ignoring upper/lower case).
+Every task belongs to one course.
+
 ## Task model
 
 | Field | Required | Notes |
 |---|---|---|
 | `title` | yes | 1-200 characters |
-| `course` | yes | course name, 1-100 characters |
+| `course_id` | yes | an existing course (see Courses); responses also include `course: {id, name}` |
 | `type` | yes | `exam`, `submission`, `online_quiz`, `homework`, `project` |
 | `due_at` | yes | date and time, e.g. `2026-11-20T23:59`; stored as local time |
 | `estimated_hours` | no | greater than 0 |
@@ -48,9 +53,13 @@ Sending a field that does not fit the task's type returns `422`.
 | Method and path | Purpose | Success | Errors |
 |---|---|---|---|
 | `GET /health` | liveness check | 200 | |
-| `POST /tasks` | create a task | 201 | 422 |
+| `GET /courses` | all courses by name | 200 | |
+| `POST /courses` | create a course | 201 | 409 name taken, 422 |
+| `PATCH /courses/{id}` | rename a course | 200 | 404, 409, 422 |
+| `DELETE /courses/{id}` | delete a course without tasks | 204 | 404, 409 has tasks |
+| `POST /tasks` | create a task | 201 | 422 (also for an unknown `course_id`) |
 | `GET /tasks` | all tasks, most urgent first | 200 | |
-| `GET /tasks/by-course` | tasks grouped by course, most urgent course first | 200 | |
+| `GET /tasks/by-course` | every course with its tasks; most urgent course first, courses without tasks last | 200 | |
 | `GET /tasks/{id}` | one task | 200 | 404 |
 | `PATCH /tasks/{id}` | change only the fields sent; `null` clears an optional field | 200 | 404, 422 |
 | `DELETE /tasks/{id}` | delete a task | 204 | 404 |
@@ -115,8 +124,10 @@ The image sets `TZ=Asia/Jerusalem`, so an exam becomes `past` at the right local
 ### Example requests
 
 ```bash
+curl -X POST http://localhost:8000/courses -H "Content-Type: application/json" -d '{"name": "Automata"}'
+
 curl -X POST http://localhost:8000/tasks -H "Content-Type: application/json" \
-  -d '{"title": "Exercise 3", "course": "Automata", "type": "homework", "due_at": "2026-11-20T23:59", "estimated_hours": 4}'
+  -d '{"title": "Exercise 3", "course_id": 1, "type": "homework", "due_at": "2026-11-20T23:59", "estimated_hours": 4}'
 
 curl http://localhost:8000/tasks
 curl http://localhost:8000/tasks/by-course
@@ -133,7 +144,7 @@ From `frontend/`, with the backend running:
 uv run streamlit run streamlit_app.py
 ```
 
-Open http://localhost:8501. Add a task from **Add a task** at the top; choose **By urgency** or **By course**; expand a task to see its details, edit it, mark it done or delete it.
+Open http://localhost:8501. **By urgency** shows one numbered list, the most urgent first. **By course** shows a card per course; **+ New course** adds one, and **Open** shows that course's tasks. **Add task** opens a form whose fields follow the task type. Expand a task to see its details, mark it done, or edit and delete it.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -153,8 +164,12 @@ backend/
   tests/           pytest tests
   Dockerfile
 frontend/
-  streamlit_app.py the page
+  streamlit_app.py the page Streamlit runs: loads data, picks a screen
+  views.py         the screens: numbered list, course grid, course page
+  dialogs.py       pop-up forms: add/edit task, add/rename/delete course
+  labels.py        names, icons and due-date wording
   api.py           every HTTP call to the backend, with user-facing error messages
+  .streamlit/config.toml  theme: white and gold, Jost font, round buttons
 ```
 
 ## AI-use note

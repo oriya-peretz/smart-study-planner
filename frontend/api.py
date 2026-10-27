@@ -11,12 +11,20 @@ TIMEOUT = httpx.Timeout(10.0, connect=2.0)
 NOT_SENT = (httpx.ConnectError, httpx.ConnectTimeout, httpx.UnsupportedProtocol)
 
 
+class Course(TypedDict):
+    """One course as the backend returns it (CoursePublic)."""
+
+    id: int
+    name: str
+
+
 class Task(TypedDict):
     """One task as the backend returns it (TaskPublic)."""
 
     id: int
     title: str
-    course: str
+    course_id: int
+    course: Course
     type: str
     due_at: str
     estimated_hours: float | None
@@ -27,7 +35,7 @@ class Task(TypedDict):
 
 
 class CourseTasks(TypedDict):
-    course: str
+    course: Course
     tasks: list[Task]
 
 
@@ -53,7 +61,9 @@ def _friendly(response: httpx.Response) -> str:
                 problems.append(f"{field}: {message}" if field else message)
             return "Please fix: " + "; ".join(problems)
         case 404:
-            return "That task no longer exists. Reload the page."
+            return "That item no longer exists. Reload the page."
+        case 409:  # the request conflicts with what is stored; the backend says how
+            return response.json()["detail"]
         case code:
             return f"The backend failed ({code}). Check its logs."
 
@@ -89,6 +99,22 @@ def _json(response: httpx.Response) -> Any:
             f"The service at {BACKEND_URL} did not answer like the Smart Study Planner API. "
             "Check BACKEND_URL."
         ) from exc
+
+
+def list_courses() -> list[Course]:
+    return _json(_request("GET", "/courses"))
+
+
+def create_course(name: str) -> Course:
+    return _json(_request("POST", "/courses", json={"name": name}))
+
+
+def rename_course(course_id: int, name: str) -> Course:
+    return _json(_request("PATCH", f"/courses/{course_id}", json={"name": name}))
+
+
+def delete_course(course_id: int) -> None:
+    _request("DELETE", f"/courses/{course_id}")
 
 
 def list_tasks(include_done: bool = True) -> list[Task]:

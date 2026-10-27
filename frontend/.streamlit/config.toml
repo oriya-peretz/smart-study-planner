@@ -4,3 +4,20 @@ gatherUsageStats = false  # Streamlit collects usage stats unless you opt out
 [server]
 headless = true
 address = "localhost"  # only this machine; a container overrides it
+
+[client]
+toolbarMode = "viewer"  # hide the developer menu (Deploy, rerun settings)
+
+[theme]
+base = "light"
+primaryColor = "#B08D57"             # gold: buttons, links, the active view
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F8F5EF" # warm ivory: inputs and cards
+textColor = "#2A2723"
+borderColor = "#E9E1D1"              # thin warm lines instead of grey boxes
+linkColor = "#B08D57"
+font = "Jost:https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&display=swap"
+baseFontWeight = 400
+headingFontWeights = 300
+baseRadius = "medium"
+buttonRadius = "full"                # pill buttons
