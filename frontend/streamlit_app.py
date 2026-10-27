@@ -31,6 +31,9 @@ st.html(
       .tagline.notice { color: #B08D57; margin-bottom: .4rem; }
       .user-email { font-size: .85rem; color: #7A7266; margin: 0; }
       [data-testid="stExpander"] details { border-width: 0 0 1px 0; border-radius: 0; }
+      /* Streamlit's "Press Enter to submit form" and "16/254" hints inside text fields:
+         noise for a user. max_chars still limits the length. */
+      [data-testid="InputInstructions"] { display: none; }
     </style>
     """
 )
