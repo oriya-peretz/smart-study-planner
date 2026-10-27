@@ -51,6 +51,10 @@ class BackendNoAnswer(BackendError):
     """The request was sent but no full reply came back in time: outcome unknown."""
 
 
+class NotLoggedIn(BackendError):
+    """The backend answered 401: wrong email or password, or the session ended."""
+
+
 def _friendly(response: httpx.Response) -> str:
     match response.status_code:
         case 422:
@@ -62,7 +66,7 @@ def _friendly(response: httpx.Response) -> str:
             return "Please fix: " + "; ".join(problems)
         case 404:
             return "That item no longer exists. Reload the page."
-        case 409:  # the request conflicts with what is stored; the backend says how
+        case 401 | 409:  # not logged in, or a conflict; the backend says which
             return response.json()["detail"]
         case code:
             return f"The backend failed ({code}). Check its logs."
@@ -86,6 +90,8 @@ def _request(method: str, path: str, **kwargs) -> httpx.Response:
             "The backend did not answer in time. Your change may have been saved. "
             "Reload the page and check before trying again."
         ) from exc
+    if response.status_code == 401:
+        raise NotLoggedIn(_friendly(response))
     if response.is_error:
         raise BackendError(_friendly(response))
     return response
@@ -101,39 +107,69 @@ def _json(response: httpx.Response) -> Any:
         ) from exc
 
 
-def list_courses() -> list[Course]:
-    return _json(_request("GET", "/courses"))
+class UserInfo(TypedDict):
+    id: int
+    email: str
 
 
-def create_course(name: str) -> Course:
-    return _json(_request("POST", "/courses", json={"name": name}))
-
-
-def rename_course(course_id: int, name: str) -> Course:
-    return _json(_request("PATCH", f"/courses/{course_id}", json={"name": name}))
-
-
-def delete_course(course_id: int) -> None:
-    _request("DELETE", f"/courses/{course_id}")
-
-
-def list_tasks(include_done: bool = True) -> list[Task]:
-    return _json(_request("GET", "/tasks", params={"include_done": include_done}))
-
-
-def list_tasks_by_course(include_done: bool = True) -> list[CourseTasks]:
+def sign_up(email: str, password: str) -> UserInfo:
     return _json(
-        _request("GET", "/tasks/by-course", params={"include_done": include_done})
+        _request("POST", "/auth/signup", json={"email": email, "password": password})
     )
 
 
-def create_task(task: dict) -> Task:
-    return _json(_request("POST", "/tasks", json=task))
+def log_in(email: str, password: str) -> str:
+    """Returns the token that proves who is calling in every later request."""
+    body = _json(
+        _request("POST", "/auth/login", json={"email": email, "password": password})
+    )
+    return body["access_token"]
 
 
-def update_task(task_id: int, changes: dict) -> Task:
-    return _json(_request("PATCH", f"/tasks/{task_id}", json=changes))
+class Backend:
+    """The API as seen by one logged-in user: every request carries that user's token.
 
+    Streamlit serves every visitor from the same Python process, so the token
+    lives in this object (one per browser tab), never in a global variable.
+    """
 
-def delete_task(task_id: int) -> None:
-    _request("DELETE", f"/tasks/{task_id}")
+    def __init__(self, token: str) -> None:
+        self._headers = {"Authorization": f"Bearer {token}"}
+
+    def _call(self, method: str, path: str, **kwargs) -> httpx.Response:
+        return _request(method, path, headers=self._headers, **kwargs)
+
+    def me(self) -> UserInfo:
+        return _json(self._call("GET", "/auth/me"))
+
+    def log_out(self) -> None:
+        self._call("POST", "/auth/logout")
+
+    def list_courses(self) -> list[Course]:
+        return _json(self._call("GET", "/courses"))
+
+    def create_course(self, name: str) -> Course:
+        return _json(self._call("POST", "/courses", json={"name": name}))
+
+    def rename_course(self, course_id: int, name: str) -> Course:
+        return _json(self._call("PATCH", f"/courses/{course_id}", json={"name": name}))
+
+    def delete_course(self, course_id: int) -> None:
+        self._call("DELETE", f"/courses/{course_id}")
+
+    def list_tasks(self, include_done: bool = True) -> list[Task]:
+        return _json(self._call("GET", "/tasks", params={"include_done": include_done}))
+
+    def list_tasks_by_course(self, include_done: bool = True) -> list[CourseTasks]:
+        return _json(
+            self._call("GET", "/tasks/by-course", params={"include_done": include_done})
+        )
+
+    def create_task(self, task: dict) -> Task:
+        return _json(self._call("POST", "/tasks", json=task))
+
+    def update_task(self, task_id: int, changes: dict) -> Task:
+        return _json(self._call("PATCH", f"/tasks/{task_id}", json=changes))
+
+    def delete_task(self, task_id: int) -> None:
+        self._call("DELETE", f"/tasks/{task_id}")

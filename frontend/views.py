@@ -4,6 +4,7 @@ from datetime import date
 
 import streamlit as st
 
+import account
 import api
 import dialogs
 from labels import (
@@ -62,7 +63,7 @@ def task_row(
             "Mark as done", key=f"done-{tid}", icon=":material/check:", width="stretch"
         ):
             try:
-                api.update_task(tid, {"status": "done"})
+                account.backend().update_task(tid, {"status": "done"})
             except api.BackendError as exc:
                 st.error(str(exc))
             else:

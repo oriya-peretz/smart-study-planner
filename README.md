@@ -26,6 +26,29 @@ uv run streamlit run streamlit_app.py
 
 Open http://localhost:8501 for the app, or http://localhost:8000/docs for the API documentation.
 
+## Accounts
+
+Every student has an account and sees only their own courses and tasks.
+
+- `POST /auth/signup` with `{"email", "password"}` (password: 8-128 characters) creates an account.
+- `POST /auth/login` with the same body returns `{"access_token": "..."}`.
+- Every `/courses` and `/tasks` request sends it as `Authorization: Bearer <token>`; without a valid token the answer is `401`.
+- Another user's course or task answers `404`, as if it did not exist.
+- Passwords are stored only as salted scrypt hashes; tokens are stored only as SHA-256 hashes and expire after 14 days.
+- `POST /auth/logout` ends the session; `GET /auth/me` returns the logged-in user.
+
+In `/docs`, log in with `POST /auth/login`, copy the token, and paste it under **Authorize**.
+
+### Demo account
+
+With the backend running, from `backend/`:
+
+```bash
+uv run python scripts/demo_data.py
+```
+
+creates `demo@example.com` (password in `scripts/demo_data.py`) with sample courses and tasks. Running it again changes nothing.
+
 ## Courses
 
 A course has an `id` and a `name` (1-100 characters, unique ignoring upper/lower case).
@@ -52,7 +75,11 @@ Sending a field that does not fit the task's type returns `422`.
 
 | Method and path | Purpose | Success | Errors |
 |---|---|---|---|
-| `GET /health` | liveness check | 200 | |
+| `GET /health` | liveness check (no token needed) | 200 | |
+| `POST /auth/signup` | create an account | 201 | 409 email taken, 422 |
+| `POST /auth/login` | get a token | 200 | 401 wrong email or password |
+| `POST /auth/logout` | end this session | 204 | 401 |
+| `GET /auth/me` | the logged-in user | 200 | 401 |
 | `GET /courses` | all courses by name | 200 | |
 | `POST /courses` | create a course | 201 | 409 name taken, 422 |
 | `PATCH /courses/{id}` | rename a course | 200 | 404, 409, 422 |
@@ -63,6 +90,8 @@ Sending a field that does not fit the task's type returns `422`.
 | `GET /tasks/{id}` | one task | 200 | 404 |
 | `PATCH /tasks/{id}` | change only the fields sent; `null` clears an optional field | 200 | 404, 422 |
 | `DELETE /tasks/{id}` | delete a task | 204 | 404 |
+
+All course and task routes need a token and answer `401` without one.
 
 **Urgency:** open tasks first, nearest `due_at` first (an overdue open task comes first); done tasks and past exams last.
 Both list views accept `?include_done=false` to hide done tasks and past exams.
@@ -124,16 +153,20 @@ The image sets `TZ=Asia/Jerusalem`, so an exam becomes `past` at the right local
 ### Example requests
 
 ```bash
-curl -X POST http://localhost:8000/courses -H "Content-Type: application/json" -d '{"name": "Automata"}'
+curl -X POST http://localhost:8000/auth/signup -H "Content-Type: application/json" -d '{"email": "me@example.com", "password": "a long password"}'
+curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d '{"email": "me@example.com", "password": "a long password"}'
+TOKEN=...   # the access_token from the answer above
 
-curl -X POST http://localhost:8000/tasks -H "Content-Type: application/json" \
+curl -X POST http://localhost:8000/courses -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"name": "Automata"}'
+
+curl -X POST http://localhost:8000/tasks -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"title": "Exercise 3", "course_id": 1, "type": "homework", "due_at": "2026-11-20T23:59", "estimated_hours": 4}'
 
-curl http://localhost:8000/tasks
-curl http://localhost:8000/tasks/by-course
+curl http://localhost:8000/tasks -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8000/tasks/by-course -H "Authorization: Bearer $TOKEN"
 
-curl -X PATCH http://localhost:8000/tasks/1 -H "Content-Type: application/json" -d '{"status": "in_progress"}'
-curl -X DELETE http://localhost:8000/tasks/1
+curl -X PATCH http://localhost:8000/tasks/1 -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"status": "in_progress"}'
+curl -X DELETE http://localhost:8000/tasks/1 -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Frontend
@@ -144,7 +177,7 @@ From `frontend/`, with the backend running:
 uv run streamlit run streamlit_app.py
 ```
 
-Open http://localhost:8501. **By urgency** shows one numbered list, the most urgent first. **By course** shows a card per course; **+ New course** adds one, and **Open** shows that course's tasks. **Add task** opens a form whose fields follow the task type. Expand a task to see its details, mark it done, or edit and delete it.
+Open http://localhost:8501, then **Sign up** or **Log in** (the login lasts until you log out or reload the page). **By urgency** shows one numbered list, the most urgent first. **By course** shows a card per course; **+ New course** adds one, and **Open** shows that course's tasks. **Add task** opens a form whose fields follow the task type. Expand a task to see its details, mark it done, or edit and delete it.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -158,13 +191,16 @@ Open http://localhost:8501. **By urgency** shows one numbered list, the most urg
 backend/
   app/
     main.py        routes and startup
+    auth.py        accounts: password hashing, tokens, who is calling
     models.py      task table and request/response models with validation
     db.py          database engine and per-request session
     ordering.py    the urgency and by-course views
   tests/           pytest tests
+  scripts/demo_data.py  creates a demo account with sample data
   Dockerfile
 frontend/
   streamlit_app.py the page Streamlit runs: loads data, picks a screen
+  account.py       landing screen, log in, sign up, log out
   views.py         the screens: numbered list, course grid, course page
   dialogs.py       pop-up forms: add/edit task, add/rename/delete course
   labels.py        names, icons and due-date wording
