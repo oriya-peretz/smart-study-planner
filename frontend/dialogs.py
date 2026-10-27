@@ -4,6 +4,7 @@ from datetime import date, datetime, time
 
 import streamlit as st
 
+import account
 import api
 from labels import STATUSES, TYPES, plain
 
@@ -135,7 +136,7 @@ def add_task(courses: list[api.Course], course_id: int | None = None) -> None:
                 st.warning(problem)
                 return
             try:
-                created = api.create_task(body)
+                created = account.backend().create_task(body)
             except api.BackendError as exc:
                 st.error(str(exc))
             else:
@@ -155,7 +156,7 @@ def edit_task(task: api.Task, courses: list[api.Course]) -> None:
                 st.warning(problem)
                 return
             try:
-                api.update_task(tid, changes)
+                account.backend().update_task(tid, changes)
             except api.BackendError as exc:
                 st.error(str(exc))
             else:
@@ -177,7 +178,7 @@ def edit_task(task: api.Task, courses: list[api.Course]) -> None:
     if yes.button("Yes, delete", key=f"delete-yes-{tid}", width="stretch"):
         st.session_state.pop(f"confirm-delete-{tid}")
         try:
-            api.delete_task(tid)
+            account.backend().delete_task(tid)
         except api.BackendError as exc:
             st.error(str(exc))
         else:
@@ -200,7 +201,7 @@ def add_course() -> None:
                 st.warning("Give the course a name.")
                 return
             try:
-                created = api.create_course(name)
+                created = account.backend().create_course(name)
             except api.BackendError as exc:
                 st.error(str(exc))
             else:
@@ -218,7 +219,7 @@ def edit_course(course: api.Course, has_tasks: bool) -> None:
             "Rename", type="primary", key=f"rename-{cid}-submit", width="stretch"
         ):
             try:
-                api.rename_course(cid, name)
+                account.backend().rename_course(cid, name)
             except api.BackendError as exc:
                 st.error(str(exc))
             else:
@@ -232,7 +233,7 @@ def edit_course(course: api.Course, has_tasks: bool) -> None:
         icon=":material/delete:",
     ):
         try:
-            api.delete_course(cid)
+            account.backend().delete_course(cid)
         except api.BackendError as exc:
             st.error(str(exc))
         else:
