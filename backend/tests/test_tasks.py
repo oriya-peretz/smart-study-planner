@@ -85,6 +85,24 @@ def test_patch_rejects_field_that_does_not_fit_stored_type(client, course_id):
     assert "an exam cannot have: link" in response.text
 
 
+def test_patch_rejects_status_sent_for_an_exam(client, course_id):
+    exam = create(client, **EXAM)
+    response = client.patch(f"/tasks/{exam['id']}", json={"status": "done"})
+    assert response.status_code == 422  # same answer as creating an exam with a status
+    assert "an exam cannot have: status" in response.text
+    assert client.get(f"/tasks/{exam['id']}").json()["status"] == "todo"
+
+
+def test_patch_to_exam_with_a_status_is_rejected(client, course_id):
+    task = create(client, **HOMEWORK)
+    response = client.patch(
+        f"/tasks/{task['id']}",
+        json={"type": "exam", "due_at": "2099-02-01T09:00:00", "status": "in_progress"},
+    )
+    assert response.status_code == 422
+    assert client.get(f"/tasks/{task['id']}").json()["type"] == "homework"  # unchanged
+
+
 def test_patch_change_homework_to_exam(client, course_id):
     task = create(client, **HOMEWORK)
     response = client.patch(
