@@ -10,8 +10,12 @@ import api
 import dialogs
 import views
 
+# "wide" lets each screen set its own width below: narrow for logging in,
+# wider for the app so three course cards fit side by side.
 st.set_page_config(
-    page_title="Smart Study Planner", page_icon=":material/auto_stories:"
+    page_title="Smart Study Planner",
+    page_icon=":material/auto_stories:",
+    layout="wide",
 )
 
 # The theme (colours, font, round buttons) is in .streamlit/config.toml.
@@ -19,7 +23,7 @@ st.set_page_config(
 st.html(
     """
     <style>
-      .wordmark { text-align: center; font-weight: 300; font-size: 1.6rem;
+      .wordmark { text-align: center; font-weight: 300; font-size: 2.3rem;
                   letter-spacing: .42em; text-transform: uppercase; margin-top: 1rem; }
       .wordmark.hero { font-size: 2.48rem; line-height: 1.5; margin-top: 12vh; }
       .gold-rule { width: 56px; height: 1px; background: #B08D57; margin: .9rem auto 1.6rem; }
@@ -37,6 +41,7 @@ if not account.is_logged_in():
     st.html(
         """
         <style>
+          [data-testid="stMainBlockContainer"] { max-width: 736px; }
           .tagline { font-size: 0.96rem; }
           [data-testid="stWidgetLabel"] p { font-size: 0.88rem; }
           [data-testid="stTextInput"] input { font-size: 0.92rem; min-height: 2.43rem; }
@@ -59,7 +64,14 @@ if logout_col.button(
 ):
     account.log_out()
 
-st.html('<div class="wordmark">Smart Study Planner</div><div class="gold-rule"></div>')
+st.html(
+    """
+    <style>
+      [data-testid="stMainBlockContainer"] { max-width: 1180px; }
+    </style>
+    <div class="wordmark">Smart Study Planner</div><div class="gold-rule"></div>
+    """
+)
 
 VIEWS = ["By course", "By urgency"]
 

@@ -18,7 +18,7 @@ from labels import (
     when,
 )
 
-CARDS_PER_ROW = 2  # two, so each card has room for its task list
+CARDS_PER_ROW = 3
 
 
 def task_row(
