@@ -3,7 +3,7 @@
 import streamlit as st
 
 import api
-from texts import LANGUAGES, error_message, language, t
+from texts import LANGUAGES, error_message, is_rtl, language, t
 
 
 def is_logged_in() -> bool:
@@ -103,7 +103,10 @@ def _form(signing_up: bool) -> None:
                 st.session_state["email"] = email.strip().lower()
                 st.rerun()
     if st.button(
-        t("back"), key="auth-back", type="tertiary", icon=":material/arrow_back:"
+        t("back"),
+        key="auth-back",
+        type="tertiary",
+        icon=":material/arrow_forward:" if is_rtl() else ":material/arrow_back:",
     ):
         st.session_state.pop("auth-mode")
         st.rerun()

@@ -79,7 +79,21 @@ if not account.is_logged_in():
     st.html(
         """
         <style>
-          [data-testid="stMainBlockContainer"] { max-width: 736px; }
+          [data-testid="stMainBlockContainer"] {
+            max-width: 736px; padding-top: 3rem; padding-bottom: 1rem;
+          }
+          [data-testid="stVerticalBlock"] { gap: .6rem; }
+          .wordmark.hero { margin-top: clamp(0rem, 3vh, 1.5rem); line-height: 1.25; }
+          .gold-rule { margin: .7rem auto 1rem; }
+          .tagline { margin-bottom: 1rem; }
+          /* Keep the switch above Streamlit's header without occupying a row. */
+          .st-key-landing-bar {
+            position: fixed; top: .5rem; right: 3.5rem; width: auto;
+            z-index: 1000001;
+          }
+          @media (max-width: 600px) {
+            .wordmark.hero { font-size: 1.7rem; letter-spacing: .18em; }
+          }
           .tagline { font-size: 0.96rem; }
           [data-testid="stWidgetLabel"] p { font-size: 0.88rem; }
           [data-testid="stTextInput"] input { font-size: 0.92rem; min-height: 2.43rem; }
@@ -89,8 +103,6 @@ if not account.is_logged_in():
         """
     )
     with st.container(key="landing-bar"):
-        _, switch_col = st.columns([2, 1.3])
-    with switch_col, st.container(horizontal=True, horizontal_alignment="right"):
         account.language_switch()
     st.html(
         '<div class="wordmark hero">Smart Study Planner</div><div class="gold-rule"></div>'
