@@ -69,7 +69,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def sign_up(body: Credentials, session: db.SessionDep) -> User:
     email = body.email.lower()
     if session.exec(select(User).where(User.email == email)).first() is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, detail="An account with this email already exists")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, detail="An account with this email already exists"
+        )
     user = User(email=email, password_hash=hash_password(body.password))
     session.add(user)
     session.commit()
@@ -83,7 +85,9 @@ def log_in(body: Credentials, session: db.SessionDep) -> TokenPublic:
     # The same answer for "no such email" and "wrong password", so the
     # response does not reveal which emails have accounts.
     if user is None or not check_password(body.password, user.password_hash):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Wrong email or password")
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, detail="Wrong email or password"
+        )
     token = secrets.token_urlsafe(32)
     session.add(
         AuthToken(

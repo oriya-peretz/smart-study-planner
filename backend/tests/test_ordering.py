@@ -3,12 +3,22 @@ from datetime import datetime
 from app.models import CoursePublic, TaskPublic
 from app.ordering import by_course, by_urgency
 
-COURSES = {name: CoursePublic(id=i, name=name) for i, name in enumerate(["A", "Algorithms", "Automata", "Calculus", "Empty"], 1)}
+COURSES = {
+    name: CoursePublic(id=i, name=name)
+    for i, name in enumerate(["A", "Algorithms", "Automata", "Calculus", "Empty"], 1)
+}
 
 
 def task(id, course, due, status="todo", type="homework"):
     c = COURSES[course]
-    fields = {"id": id, "title": f"task {id}", "course_id": c.id, "course": c, "type": type, "due_at": due}
+    fields = {
+        "id": id,
+        "title": f"task {id}",
+        "course_id": c.id,
+        "course": c,
+        "type": type,
+        "due_at": due,
+    }
     if type != "exam":
         fields["status"] = status
     return TaskPublic(**fields)

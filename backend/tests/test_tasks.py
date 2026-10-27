@@ -41,7 +41,9 @@ def test_create_returns_task_with_id_and_default_status(client, course_id):
 
 def test_create_exam_gets_status_from_date(client, course_id):
     assert create(client, **EXAM)["status"] == "todo"
-    assert create(client, **{**EXAM, "due_at": "2020-01-15T09:00:00"})["status"] == "past"
+    assert (
+        create(client, **{**EXAM, "due_at": "2020-01-15T09:00:00"})["status"] == "past"
+    )
 
 
 def test_create_invalid_task_is_422_and_not_saved(client, course_id):
@@ -80,7 +82,9 @@ def test_patch_cannot_clear_required_field(client, course_id):
 
 def test_patch_rejects_field_that_does_not_fit_stored_type(client, course_id):
     exam = create(client, **EXAM)
-    response = client.patch(f"/tasks/{exam['id']}", json={"link": "https://example.com"})
+    response = client.patch(
+        f"/tasks/{exam['id']}", json={"link": "https://example.com"}
+    )
     assert response.status_code == 422
     assert "an exam cannot have: link" in response.text
 
@@ -125,14 +129,30 @@ def test_delete_removes_task(client, course_id):
 
 
 def test_list_is_ordered_by_urgency(client, course_id):
-    later = create(client, **{**HOMEWORK, "title": "later", "due_at": "2026-12-01T10:00:00"})
-    sooner = create(client, **{**HOMEWORK, "title": "sooner", "due_at": "2026-11-10T10:00:00"})
-    done = create(client, **{**HOMEWORK, "title": "done", "due_at": "2026-11-01T10:00:00", "status": "done"})
+    later = create(
+        client, **{**HOMEWORK, "title": "later", "due_at": "2026-12-01T10:00:00"}
+    )
+    sooner = create(
+        client, **{**HOMEWORK, "title": "sooner", "due_at": "2026-11-10T10:00:00"}
+    )
+    done = create(
+        client,
+        **{
+            **HOMEWORK,
+            "title": "done",
+            "due_at": "2026-11-01T10:00:00",
+            "status": "done",
+        },
+    )
     titles = [task["title"] for task in client.get("/tasks").json()]
     assert titles == ["sooner", "later", "done"]
-    assert {later["id"], sooner["id"], done["id"]} == {t["id"] for t in client.get("/tasks").json()}
+    assert {later["id"], sooner["id"], done["id"]} == {
+        t["id"] for t in client.get("/tasks").json()
+    }
     create(client, **{**EXAM, "title": "past exam", "due_at": "2020-01-15T09:00:00"})
-    open_titles = [task["title"] for task in client.get("/tasks?include_done=false").json()]
+    open_titles = [
+        task["title"] for task in client.get("/tasks?include_done=false").json()
+    ]
     assert open_titles == ["sooner", "later"]  # done tasks and past exams are hidden
 
 
@@ -140,10 +160,22 @@ def test_by_course_groups_and_orders(client, course_id):
     algorithms = add_course(client, "Algorithms")
     empty = add_course(client, "Empty course")
     create(client, **{**HOMEWORK, "title": "A later", "due_at": "2026-12-01T10:00:00"})
-    create(client, **{**HOMEWORK, "course_id": algorithms, "title": "B soon", "due_at": "2026-11-05T10:00:00"})
+    create(
+        client,
+        **{
+            **HOMEWORK,
+            "course_id": algorithms,
+            "title": "B soon",
+            "due_at": "2026-11-05T10:00:00",
+        },
+    )
     create(client, **{**HOMEWORK, "title": "A soon", "due_at": "2026-11-15T10:00:00"})
     groups = client.get("/tasks/by-course").json()
-    assert [g["course"]["name"] for g in groups] == ["Algorithms", "Automata", "Empty course"]
+    assert [g["course"]["name"] for g in groups] == [
+        "Algorithms",
+        "Automata",
+        "Empty course",
+    ]
     assert [t["title"] for t in groups[1]["tasks"]] == ["A soon", "A later"]
     assert groups[2] == {"course": {"id": empty, "name": "Empty course"}, "tasks": []}
 
@@ -164,4 +196,6 @@ def test_patch_moves_task_to_another_course(client, course_id):
     other = add_course(client, "Algorithms")
     moved = client.patch(f"/tasks/{task['id']}", json={"course_id": other}).json()
     assert moved["course"] == {"id": other, "name": "Algorithms"}
-    assert client.patch(f"/tasks/{task['id']}", json={"course_id": 999}).status_code == 422
+    assert (
+        client.patch(f"/tasks/{task['id']}", json={"course_id": 999}).status_code == 422
+    )

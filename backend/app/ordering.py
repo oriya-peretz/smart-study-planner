@@ -18,7 +18,9 @@ def by_urgency(tasks: Iterable[TaskPublic]) -> list[TaskPublic]:
     return sorted(tasks, key=urgency_key)
 
 
-def by_course(tasks: Iterable[TaskPublic], courses: Iterable[CoursePublic]) -> list[CourseTasks]:
+def by_course(
+    tasks: Iterable[TaskPublic], courses: Iterable[CoursePublic]
+) -> list[CourseTasks]:
     """Every course with its tasks by urgency.
 
     Courses are ordered by their most urgent task; courses without tasks come

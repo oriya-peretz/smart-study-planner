@@ -36,7 +36,10 @@ def test_password_is_never_stored(anon, session):
 def test_sign_up_returns_the_user_without_password(anon):
     response = anon.post("/auth/signup", json=credentials("New@Example.com"))
     assert response.status_code == 201
-    assert response.json() == {"id": 1, "email": "new@example.com"}  # stored in lower case
+    assert response.json() == {
+        "id": 1,
+        "email": "new@example.com",
+    }  # stored in lower case
 
 
 def test_email_is_taken_ignoring_case(anon):
@@ -46,8 +49,13 @@ def test_email_is_taken_ignoring_case(anon):
 
 
 def test_invalid_sign_up_is_422(anon):
-    assert anon.post("/auth/signup", json=credentials(email="not-an-email")).status_code == 422
-    assert anon.post("/auth/signup", json=credentials(password="short")).status_code == 422
+    assert (
+        anon.post("/auth/signup", json=credentials(email="not-an-email")).status_code
+        == 422
+    )
+    assert (
+        anon.post("/auth/signup", json=credentials(password="short")).status_code == 422
+    )
 
 
 # ---- Log in ----
@@ -64,8 +72,12 @@ def test_log_in_gives_a_working_token(anon):
 
 def test_wrong_password_and_unknown_email_look_the_same(anon):
     anon.post("/auth/signup", json=credentials())
-    wrong_password = anon.post("/auth/login", json=credentials(password="wrong password"))
-    unknown_email = anon.post("/auth/login", json=credentials(email="nobody@example.com"))
+    wrong_password = anon.post(
+        "/auth/login", json=credentials(password="wrong password")
+    )
+    unknown_email = anon.post(
+        "/auth/login", json=credentials(email="nobody@example.com")
+    )
     assert wrong_password.status_code == unknown_email.status_code == 401
     assert wrong_password.json() == unknown_email.json()
 
@@ -80,7 +92,10 @@ def test_routes_need_a_token(anon):
 
 
 def test_a_made_up_token_is_rejected(anon):
-    assert anon.get("/courses", headers={"Authorization": "Bearer made-up"}).status_code == 401
+    assert (
+        anon.get("/courses", headers={"Authorization": "Bearer made-up"}).status_code
+        == 401
+    )
 
 
 def test_health_needs_no_token(anon):
@@ -115,9 +130,14 @@ def test_users_see_only_their_own_data(make_client):
 
     # 404, not 403: a stranger cannot even tell that the id exists.
     assert bob.get(f"/tasks/{task['id']}").status_code == 404
-    assert bob.patch(f"/tasks/{task['id']}", json={"title": "Mine now"}).status_code == 404
+    assert (
+        bob.patch(f"/tasks/{task['id']}", json={"title": "Mine now"}).status_code == 404
+    )
     assert bob.delete(f"/tasks/{task['id']}").status_code == 404
-    assert bob.patch(f"/courses/{course['id']}", json={"name": "Mine now"}).status_code == 404
+    assert (
+        bob.patch(f"/courses/{course['id']}", json={"name": "Mine now"}).status_code
+        == 404
+    )
     assert bob.delete(f"/courses/{course['id']}").status_code == 404
     assert alice.get(f"/tasks/{task['id']}").json() == task  # untouched
 
@@ -135,7 +155,9 @@ def test_cannot_move_a_task_into_another_users_course(make_client):
     alices_course = alice.post("/courses", json={"name": "Automata"}).json()
     bobs_course = bob.post("/courses", json={"name": "Statistics"}).json()
     task = bob.post("/tasks", json={**HOMEWORK, "course_id": bobs_course["id"]}).json()
-    response = bob.patch(f"/tasks/{task['id']}", json={"course_id": alices_course["id"]})
+    response = bob.patch(
+        f"/tasks/{task['id']}", json={"course_id": alices_course["id"]}
+    )
     assert response.status_code == 422
 
 
