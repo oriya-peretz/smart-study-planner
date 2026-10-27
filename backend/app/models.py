@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, tzinfo
 from enum import StrEnum
 from typing import Annotated
 
@@ -37,10 +37,14 @@ EXAM_ONLY_FIELDS = ("location",)
 NON_EXAM_FIELDS = ("status", "link")
 
 
-def to_local_time(value: datetime) -> datetime:
-    """Keep every date as local time without a time zone, so they compare safely."""
+def to_local_time(value: datetime, zone: tzinfo | None = None) -> datetime:
+    """Keep every date as local time without a time zone, so they compare safely.
+
+    `zone` is the server's own time zone unless given; tests pass one so the
+    result does not depend on the machine they run on.
+    """
     if value.tzinfo is not None:
-        return value.astimezone().replace(tzinfo=None)
+        return value.astimezone(zone).replace(tzinfo=None)
     return value
 
 
