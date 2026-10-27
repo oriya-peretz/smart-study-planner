@@ -84,6 +84,15 @@ if not account.is_logged_in():
             max-width: 736px; padding-top: 4.5rem; padding-bottom: 1rem;
           }
           [data-testid="stVerticalBlock"] { gap: .6rem; }
+          [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
+            gap: 0;
+          }
+          /* Center the complete welcome/form block in the usable viewport.
+             min-height lets short windows scroll instead of clipping content. */
+          .st-key-landing-content {
+            min-height: calc(100dvh - 5.5rem);
+            justify-content: center;
+          }
           .wordmark.hero { margin-top: 0; line-height: 1.25; }
           .gold-rule { margin: .7rem auto 1rem; }
           .tagline { margin-bottom: 1rem; }
@@ -105,12 +114,13 @@ if not account.is_logged_in():
     )
     with st.container(key="landing-bar"):
         account.language_switch()
-    st.html(
-        '<div class="wordmark hero">Smart Study Planner</div><div class="gold-rule"></div>'
-    )
-    if notice := st.session_state.pop("notice", None):
-        st.html(f'<p class="tagline notice">{html.escape(notice)}</p>')
-    account.landing()
+    with st.container(key="landing-content"):
+        st.html(
+            '<div class="wordmark hero">Smart Study Planner</div><div class="gold-rule"></div>'
+        )
+        if notice := st.session_state.pop("notice", None):
+            st.html(f'<p class="tagline notice">{html.escape(notice)}</p>')
+        account.landing()
     st.stop()
 
 # Far left: who is logged in, with Log out right beside it. Far right: the language.
