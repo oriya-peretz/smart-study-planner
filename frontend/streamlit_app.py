@@ -21,7 +21,7 @@ st.html(
     <style>
       .wordmark { text-align: center; font-weight: 300; font-size: 1.6rem;
                   letter-spacing: .42em; text-transform: uppercase; margin-top: 1rem; }
-      .wordmark.hero { font-size: 2.6rem; line-height: 1.5; margin-top: 18vh; }
+      .wordmark.hero { font-size: 3.1rem; line-height: 1.5; margin-top: 16vh; }
       .gold-rule { width: 56px; height: 1px; background: #B08D57; margin: .9rem auto 1.6rem; }
       .tagline { text-align: center; font-weight: 300; color: #7A7266; margin-bottom: 2rem; }
       .tagline.notice { color: #B08D57; margin-bottom: .4rem; }
@@ -32,8 +32,18 @@ st.html(
 )
 
 if not account.is_logged_in():
+    # Drawn only before logging in, so these larger sizes never reach the app itself.
     st.html(
-        '<div class="wordmark hero">Smart Study Planner</div><div class="gold-rule"></div>'
+        """
+        <style>
+          .tagline { font-size: 1.2rem; }
+          [data-testid="stWidgetLabel"] p { font-size: 1.1rem; }
+          [data-testid="stTextInput"] input { font-size: 1.15rem; min-height: 3rem; }
+          .stButton button, [data-testid="stFormSubmitButton"] button { min-height: 3.1rem; }
+          .stButton button p, [data-testid="stFormSubmitButton"] button p { font-size: 1.1rem; }
+        </style>
+        <div class="wordmark hero">Smart Study Planner</div><div class="gold-rule"></div>
+        """
     )
     if notice := st.session_state.pop("notice", None):
         st.html(f'<p class="tagline notice">{html.escape(notice)}</p>')
