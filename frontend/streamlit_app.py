@@ -80,10 +80,11 @@ if not account.is_logged_in():
         """
         <style>
           [data-testid="stMainBlockContainer"] {
-            max-width: 736px; padding-top: 3rem; padding-bottom: 1rem;
+            /* Leave room for the fixed header, including enlarged browser text. */
+            max-width: 736px; padding-top: 4.5rem; padding-bottom: 1rem;
           }
           [data-testid="stVerticalBlock"] { gap: .6rem; }
-          .wordmark.hero { margin-top: clamp(0rem, 3vh, 1.5rem); line-height: 1.25; }
+          .wordmark.hero { margin-top: 0; line-height: 1.25; }
           .gold-rule { margin: .7rem auto 1rem; }
           .tagline { margin-bottom: 1rem; }
           /* Keep the switch above Streamlit's header without occupying a row. */
