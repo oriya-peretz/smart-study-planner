@@ -62,7 +62,10 @@ class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     email: str = Field(unique=True, index=True)  # stored in lower case
     password_hash: str  # never the password itself, see app/auth.py
-    language: Language = Language.ENGLISH
+    # Stored as plain text ("en", "he"): a database enum column would store the
+    # member *name* ("ENGLISH"), which an added column's default cannot match.
+    # The API still accepts only Language values (see UserSettings).
+    language: str = Field(default=Language.ENGLISH.value)
 
 
 class AuthToken(SQLModel, table=True):

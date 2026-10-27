@@ -19,6 +19,7 @@ from api import BACKEND_URL
 APP = "../streamlit_app.py"  # resolved relative to this test file
 TOKEN = "test-token"
 AUTOMATA = {"id": 1, "name": "Automata"}
+ME = {"id": 1, "email": "student@example.com", "language": "en"}
 STATISTICS = {"id": 2, "name": "Statistics"}
 
 
@@ -85,6 +86,7 @@ def test_log_in_keeps_the_token_and_uses_it(backend):
     login = backend.post("/auth/login").mock(
         return_value=httpx.Response(200, json={"access_token": "fresh-token"})
     )
+    backend.get("/auth/me").mock(return_value=httpx.Response(200, json=ME))
     backend.get("/courses").mock(return_value=httpx.Response(200, json=[AUTOMATA]))
     tasks = backend.get("/tasks").mock(
         return_value=httpx.Response(200, json=[task(7, "Exercise 3")])
@@ -171,7 +173,7 @@ def test_by_course_lists_every_task_inside_its_course_card(backend):
         {"course": AUTOMATA, "tasks": []},
     ]
     at = logged_in(backend, [AUTOMATA, STATISTICS], groups=groups)
-    at.button_group(key="view").set_value("By course").run()
+    at.button_group(key="view").set_value("course").run()
 
     headings = [m.value for m in at.markdown if m.value.startswith("####")]
     assert headings == ["#### Statistics", "#### Automata"]
@@ -188,7 +190,7 @@ def test_add_task_from_a_course_card_preselects_that_course(backend):
     at = logged_in(
         backend, [AUTOMATA, STATISTICS], groups=[{"course": STATISTICS, "tasks": []}]
     )
-    at.button_group(key="view").set_value("By course").run()
+    at.button_group(key="view").set_value("course").run()
     at.button(key="course-add-2").click().run()
     assert at.selectbox(key="add-course").value == 2
 
@@ -287,3 +289,149 @@ def test_add_task_without_a_course_warns_before_any_request(backend):
     at.button(key="add-submit").click().run()
     assert at.warning[0].value == "Choose a course before saving."
     assert not post.called
+
+
+# ---- Language ----
+
+
+def is_right_to_left(at: AppTest) -> bool:
+    return any("direction: rtl" in element.proto.body for element in at.get("html"))
+
+
+def test_switching_to_hebrew_on_the_landing_screen(backend):
+    at = logged_out()
+    assert not is_right_to_left(at)
+    at.button_group(key="lang-picker").set_value("he").run()
+    assert [b.label for b in at.button] == ["התחברות", "הרשמה"]
+    assert is_right_to_left(at)
+    assert not backend.calls  # nobody is logged in, so nothing is saved yet
+
+
+def test_log_in_brings_back_the_accounts_language(backend):
+    backend.post("/auth/login").mock(
+        return_value=httpx.Response(200, json={"access_token": "fresh-token"})
+    )
+    backend.get("/auth/me").mock(
+        return_value=httpx.Response(200, json=ME | {"language": "he"})
+    )
+    backend.get("/courses").mock(return_value=httpx.Response(200, json=[AUTOMATA]))
+    backend.get("/tasks").mock(return_value=httpx.Response(200, json=[]))
+    at = logged_out()  # in English
+    at.button(key="go-login").click().run()
+    at.text_input(key="auth-email").input("student@example.com")
+    at.text_input(key="auth-password").input("a long password")
+    at.button(key="auth-submit").click().run()
+    assert at.session_state["lang"] == "he"
+    assert at.button(key="add-task").label == "הוספת משימה"
+    assert is_right_to_left(at)
+
+
+def test_a_new_account_keeps_the_language_chosen_on_the_landing_screen(backend):
+    backend.post("/auth/signup").mock(return_value=httpx.Response(201, json=ME))
+    backend.post("/auth/login").mock(
+        return_value=httpx.Response(200, json={"access_token": "fresh-token"})
+    )
+    saved = backend.patch("/auth/me").mock(
+        return_value=httpx.Response(200, json=ME | {"language": "he"})
+    )
+    backend.get("/courses").mock(return_value=httpx.Response(200, json=[]))
+    backend.get("/tasks").mock(return_value=httpx.Response(200, json=[]))
+    at = logged_out()
+    at.button_group(key="lang-picker").set_value("he").run()
+    at.button(key="go-signup").click().run()
+    at.text_input(key="auth-email").input("new@example.com")
+    at.text_input(key="auth-password").input("a long password")
+    at.button(key="auth-submit").click().run()
+    assert sent_json(saved) == {"language": "he"}
+    assert saved.calls.last.request.headers["Authorization"] == "Bearer fresh-token"
+
+
+def test_switching_language_while_logged_in_saves_it_to_the_account(backend):
+    saved = backend.patch("/auth/me").mock(
+        return_value=httpx.Response(200, json=ME | {"language": "he"})
+    )
+    at = logged_in(backend, [AUTOMATA], [task(7, "Exercise 3", days=1)])
+    at.button_group(key="lang-picker").set_value("he").run()
+    assert sent_json(saved) == {"language": "he"}
+    assert saved.calls.last.request.headers["Authorization"] == f"Bearer {TOKEN}"
+    label = at.expander[0].label
+    assert "Exercise 3" in label  # what the user typed is never translated
+    assert "עבודת בית" in label and "מחר" in label
+    assert at.button(key="add-task").label == "הוספת משימה"
+
+
+def test_backend_errors_are_shown_in_hebrew(backend):
+    backend.post("/auth/login").mock(
+        return_value=httpx.Response(401, json={"detail": "Wrong email or password"})
+    )
+    at = logged_out()
+    at.button_group(key="lang-picker").set_value("he").run()
+    at.button(key="go-login").click().run()
+    at.text_input(key="auth-email").input("student@example.com")
+    at.text_input(key="auth-password").input("wrong password")
+    at.button(key="auth-submit").click().run()
+    assert at.error[0].value == "אימייל או סיסמה שגויים"
+
+
+def test_log_out_keeps_the_language(backend):
+    backend.post("/auth/logout").mock(return_value=httpx.Response(204))
+    backend.patch("/auth/me").mock(
+        return_value=httpx.Response(200, json=ME | {"language": "he"})
+    )
+    at = logged_in(backend, [AUTOMATA])
+    at.button_group(key="lang-picker").set_value("he").run()
+    at.button(key="log-out").click().run()
+    assert "token" not in at.session_state
+    assert [b.label for b in at.button] == ["התחברות", "הרשמה"]
+
+
+def test_language_picked_before_logging_in_wins_and_is_saved(backend):
+    backend.post("/auth/login").mock(
+        return_value=httpx.Response(200, json={"access_token": "fresh-token"})
+    )
+    me = backend.get("/auth/me").mock(return_value=httpx.Response(200, json=ME))
+    saved = backend.patch("/auth/me").mock(
+        return_value=httpx.Response(200, json=ME | {"language": "he"})
+    )
+    backend.get("/courses").mock(return_value=httpx.Response(200, json=[]))
+    backend.get("/tasks").mock(return_value=httpx.Response(200, json=[]))
+    at = logged_out()
+    at.button_group(key="lang-picker").set_value("he").run()
+    at.button(key="go-login").click().run()
+    at.text_input(key="auth-email").input("student@example.com")
+    at.text_input(key="auth-password").input("a long password")
+    at.button(key="auth-submit").click().run()
+    assert at.session_state["lang"] == "he"  # not replaced by the account's "en"
+    assert sent_json(saved) == {"language": "he"}
+    assert not me.called
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "The backend failed (500). Check its logs."),
+        ("he", "השרת נכשל (500). כדאי לבדוק את הלוגים שלו."),
+    ],
+)
+def test_a_server_error_is_shown_in_the_users_language(backend, language, expected):
+    backend.post("/auth/login").mock(return_value=httpx.Response(500, text="boom"))
+    at = logged_out()
+    if language == "he":
+        at.button_group(key="lang-picker").set_value("he").run()
+    at.button(key="go-login").click().run()
+    at.text_input(key="auth-email").input("student@example.com")
+    at.text_input(key="auth-password").input("a long password")
+    at.button(key="auth-submit").click().run()
+    assert not at.exception
+    assert at.error[0].value == expected
+
+
+def test_hebrew_lines_keep_english_parts_in_order(backend):
+    backend.patch("/auth/me").mock(return_value=httpx.Response(200, json=ME))
+    at = logged_in(backend, [STATISTICS], [task(1, "Quiz 2", STATISTICS, days=1)])
+    at.button_group(key="lang-picker").set_value("he").run()
+    label = at.expander[0].label
+    # Every separator carries right-to-left marks, so "Quiz 2" and "Statistics"
+    # stay separate parts in the order they were written.
+    assert label.count("\u200f  ·  \u200f") == 4
+    assert label.index("Quiz 2") < label.index("Statistics")

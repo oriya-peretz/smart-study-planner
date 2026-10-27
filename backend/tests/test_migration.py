@@ -6,6 +6,7 @@ from contextlib import closing
 from fastapi.testclient import TestClient
 
 from app import db
+from app.auth import hash_password
 from app.main import app
 from tests.conftest import PASSWORD
 
@@ -20,16 +21,20 @@ def test_old_database_gains_the_language_column(tmp_path, monkeypatch):
             " password_hash VARCHAR NOT NULL)"
         )
         old.execute(
-            "INSERT INTO \"user\" (email, password_hash) VALUES ('kept@example.com', 'x$y')"
+            'INSERT INTO "user" (email, password_hash) VALUES (?, ?)',
+            ("kept@example.com", hash_password(PASSWORD)),
         )
     monkeypatch.setattr(db, "engine", db.make_engine(f"sqlite:///{path}"))
 
     with TestClient(app) as client:  # the lifespan runs create_db_and_tables
-        credentials = {"email": "new@example.com", "password": PASSWORD}
-        assert client.post("/auth/signup", json=credentials).status_code == 201
-        token = client.post("/auth/login", json=credentials).json()["access_token"]
-        me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
-        assert me.json()["language"] == "en"
+        # The user from before the change can still log in and read their language.
+        old_user = {"email": "kept@example.com", "password": PASSWORD}
+        response = client.post("/auth/login", json=old_user)
+        assert response.status_code == 200, response.text
+        headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
+        assert client.get("/auth/me", headers=headers).json()["language"] == "en"
+        changed = client.patch("/auth/me", json={"language": "he"}, headers=headers)
+        assert changed.json()["language"] == "he"
 
     with closing(sqlite3.connect(path)) as conn:
         columns = [row[1] for row in conn.execute('PRAGMA table_info("user")')]
@@ -37,7 +42,7 @@ def test_old_database_gains_the_language_column(tmp_path, monkeypatch):
             "SELECT language FROM \"user\" WHERE email = 'kept@example.com'"
         ).fetchone()
     assert columns.count("language") == 1
-    assert kept == ("en",)  # the existing user is kept and gets the default
+    assert kept == ("he",)  # the existing user is kept, and the change was saved
 
 
 def test_starting_twice_does_not_add_the_column_again(tmp_path, monkeypatch):

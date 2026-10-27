@@ -29,3 +29,14 @@ def test_only_web_addresses_are_links():
 
 def test_user_text_is_shown_not_interpreted():
     assert plain("**bold** [x](y)") == r"\*\*bold\*\* \[x\]\(y\)"
+
+
+def test_countdown_words_in_hebrew(monkeypatch):
+    import streamlit as st
+
+    monkeypatch.setattr(st, "session_state", {"lang": "he"})
+    assert countdown(due("2026-11-08"), TODAY) == ":red[באיחור של 2 ימים]"
+    assert countdown(due("2026-11-09"), TODAY) == ":red[באיחור של יום]"
+    assert countdown(due("2026-11-11"), TODAY) == ":primary[**מחר**]"
+    assert countdown(due("2026-11-20"), TODAY) == "בעוד 10 ימים"
+    assert countdown(due("2026-11-01", "past"), TODAY) == ":gray[עבר]"
