@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Annotated
 
 from pydantic import AfterValidator, ConfigDict, NaiveDatetime, model_validator
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class TaskType(StrEnum):
@@ -41,9 +41,27 @@ def to_local_time(value: datetime) -> datetime:
 LocalDatetime = Annotated[datetime, AfterValidator(to_local_time)]
 
 
+class CourseBase(SQLModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
+class Course(CourseBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+
+class CourseCreate(CourseBase):
+    """Body for creating or renaming a course."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class CoursePublic(CourseBase):
+    id: int
+
+
 class TaskBase(SQLModel):
     title: str = Field(min_length=1, max_length=200)
-    course: str = Field(min_length=1, max_length=100, index=True)
+    course_id: int = Field(foreign_key="course.id", index=True)
     type: TaskType
     due_at: NaiveDatetime = Field(index=True)  # local time, see to_local_time
     estimated_hours: float | None = Field(default=None, gt=0, le=1000)
@@ -55,6 +73,7 @@ class TaskBase(SQLModel):
 
 class Task(TaskBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    course: Course = Relationship()
 
 
 class TaskCreate(TaskBase):
@@ -90,7 +109,7 @@ class TaskUpdate(SQLModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     title: str | None = Field(default=None, min_length=1, max_length=200)
-    course: str | None = Field(default=None, min_length=1, max_length=100)
+    course_id: int | None = None
     type: TaskType | None = None
     due_at: LocalDatetime | None = None
     estimated_hours: float | None = Field(default=None, gt=0, le=1000)
@@ -110,6 +129,7 @@ def exam_status(due_at: datetime, now: datetime) -> TaskStatus:
 
 class TaskPublic(TaskBase):
     id: int
+    course: CoursePublic  # the course's name too, so a client needs no second request
 
     @model_validator(mode="after")
     def set_exam_status(self):
@@ -121,5 +141,5 @@ class TaskPublic(TaskBase):
 class CourseTasks(SQLModel):
     """One course and its tasks, for the by-course view."""
 
-    course: str
+    course: CoursePublic
     tasks: list[TaskPublic]

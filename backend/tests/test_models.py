@@ -3,13 +3,16 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from app.models import TaskCreate, TaskPublic, TaskStatus, TaskType, TaskUpdate, exam_status
+from app.models import CoursePublic, TaskCreate, TaskPublic, TaskStatus, TaskType, TaskUpdate, exam_status
+
+
+COURSE = CoursePublic(id=1, name="Automata")
 
 
 def homework(**overrides):
     data = {
         "title": "Exercise 3",
-        "course": "Automata",
+        "course_id": 1,
         "type": "homework",
         "due_at": "2026-11-20T23:59",
     }
@@ -19,7 +22,7 @@ def homework(**overrides):
 def exam(**overrides):
     data = {
         "title": "Final exam",
-        "course": "Automata",
+        "course_id": 1,
         "type": "exam",
         "due_at": "2027-01-15T09:00",
     }
@@ -80,7 +83,7 @@ def test_location_is_only_for_exams():
         TaskCreate(**homework(location="Room 104"))
 
 
-@pytest.mark.parametrize("missing", ["title", "course", "type", "due_at"])
+@pytest.mark.parametrize("missing", ["title", "course_id", "type", "due_at"])
 def test_required_fields(missing):
     data = homework()
     del data[missing]
@@ -118,14 +121,14 @@ def test_exam_status_depends_on_its_date():
 
 
 def test_public_exam_gets_status_from_its_date():
-    past = TaskPublic(id=1, **exam(due_at="2020-01-01T09:00"))
-    future = TaskPublic(id=2, **exam(due_at="2099-01-01T09:00"))
+    past = TaskPublic(id=1, course=COURSE, **exam(due_at="2020-01-01T09:00"))
+    future = TaskPublic(id=2, course=COURSE, **exam(due_at="2099-01-01T09:00"))
     assert past.status == TaskStatus.PAST
     assert future.status == TaskStatus.TODO
 
 
 def test_public_non_exam_keeps_its_own_status():
-    task = TaskPublic(id=1, status="in_progress", **homework(due_at="2020-01-01T09:00"))
+    task = TaskPublic(id=1, course=COURSE, status="in_progress", **homework(due_at="2020-01-01T09:00"))
     assert task.status == TaskStatus.IN_PROGRESS
 
 
