@@ -164,9 +164,12 @@ def get_task(task_id: int, session: db.SessionDep, user: CurrentUser) -> TaskPub
 @app.patch("/tasks/{task_id}", response_model=TaskPublic)
 def update_task(task_id: int, body: TaskUpdate, session: db.SessionDep, user: CurrentUser) -> TaskPublic:
     task = own_task(session, user, task_id)
-    merged = task.model_dump(exclude={"id"}) | body.model_dump(exclude_unset=True)
-    if merged["type"] == TaskType.EXAM:
-        merged["status"] = None  # an exam's status comes from its date
+    changes = body.model_dump(exclude_unset=True)
+    merged = task.model_dump(exclude={"id"}) | changes
+    if merged["type"] == TaskType.EXAM and "status" not in changes:
+        # A task becoming an exam drops its stored status: an exam's status comes
+        # from its date. A status the client sent is kept, so validation rejects it.
+        merged["status"] = None
     try:
         checked = TaskCreate.model_validate(merged)
     except ValidationError as error:
