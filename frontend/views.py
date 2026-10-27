@@ -57,7 +57,11 @@ def task_row(
         if task["notes"]:
             st.markdown(plain(task["notes"]))
 
-        done_col, edit_col = st.columns(2)
+        # In a narrow course card (no course name shown) the buttons go one under
+        # the other, so neither label is cut short.
+        done_col, edit_col = (
+            st.columns(2) if show_course else (st.container(), st.container())
+        )
         can_finish = task["type"] != "exam" and task["status"] != "done"
         if can_finish and done_col.button(
             "Mark as done", key=f"done-{tid}", icon=":material/check:", width="stretch"

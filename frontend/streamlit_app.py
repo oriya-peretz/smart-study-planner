@@ -70,7 +70,7 @@ if logout_col.button(
 st.html(
     """
     <style>
-      [data-testid="stMainBlockContainer"] { max-width: 1180px; }
+      [data-testid="stMainBlockContainer"] { max-width: 1320px; }
     </style>
     <div class="wordmark">Smart Study Planner</div><div class="gold-rule"></div>
     """
