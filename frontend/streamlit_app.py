@@ -9,7 +9,6 @@ import account
 import api
 import dialogs
 import views
-from labels import plain
 
 st.set_page_config(
     page_title="Smart Study Planner", page_icon=":material/auto_stories:"
@@ -26,6 +25,7 @@ st.html(
       .gold-rule { width: 56px; height: 1px; background: #B08D57; margin: .9rem auto 1.6rem; }
       .tagline { text-align: center; font-weight: 300; color: #7A7266; margin-bottom: 2rem; }
       .tagline.notice { color: #B08D57; margin-bottom: .4rem; }
+      .user-email { font-size: .85rem; color: #7A7266; margin: 0; }
       [data-testid="stExpander"] details { border-width: 0 0 1px 0; border-radius: 0; }
     </style>
     """
@@ -41,7 +41,8 @@ if not account.is_logged_in():
     st.stop()
 
 user_col, logout_col = st.columns([4, 1], vertical_alignment="center")
-user_col.caption(plain(st.session_state["email"]))  # plain: not a mailto link
+with user_col:  # html, because Markdown would turn the address into a mailto link
+    st.html(f'<p class="user-email">{html.escape(st.session_state["email"])}</p>')
 if logout_col.button(
     "Log out", key="log-out", type="tertiary", icon=":material/logout:"
 ):
@@ -81,7 +82,7 @@ open_course = st.session_state.get("course") if view == "By course" else None
 if open_course is None and add_col.button(
     "Add task", key="add-task", type="primary", icon=":material/add:", width="stretch"
 ):
-    dialogs.add_task(courses)
+    dialogs.open_dialog("add-task")
 
 if view == "By urgency":
     views.urgency_view(tasks, courses, today)
@@ -89,3 +90,6 @@ elif group := next((g for g in groups if g["course"]["id"] == open_course), None
     views.course_page(group, courses, today)
 else:
     views.course_grid(groups, today)
+
+loaded = tasks if view == "By urgency" else [t for g in groups for t in g["tasks"]]
+dialogs.show_open(courses, loaded)

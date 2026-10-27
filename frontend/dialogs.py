@@ -8,11 +8,24 @@ import account
 import api
 from labels import STATUSES, TYPES, plain
 
+# Which dialog is open lives in session state, and show_open() draws it on
+# every run until it is saved or dismissed. A dialog drawn only in the run of
+# the click that opened it would close again on the next full rerun.
+
+
+def open_dialog(name: str, **details) -> None:
+    st.session_state["dialog"] = {"name": name, **details}
+
+
+def close_dialog() -> None:
+    st.session_state.pop("dialog", None)
+
 
 def notify(message: str) -> None:
-    """Remember a success message, then rerun so lists show fresh data."""
+    """Remember a success message, close any dialog, and rerun so lists show fresh data."""
+    close_dialog()
     st.session_state["notice"] = message
-    st.rerun()  # also closes the open dialog
+    st.rerun()
 
 
 def or_none(text: str) -> str | None:
@@ -117,7 +130,7 @@ def missing_fields(body: dict) -> str | None:
     return None
 
 
-@st.dialog("Add a task", width="medium")
+@st.dialog("Add a task", width="medium", on_dismiss=close_dialog)
 def add_task(courses: list[api.Course], course_id: int | None = None) -> None:
     if not courses:
         st.info("Add a course first: choose **By course**, then the **+** card.")
@@ -143,7 +156,7 @@ def add_task(courses: list[api.Course], course_id: int | None = None) -> None:
                 notify(f"Added {plain(created['title'])}.")
 
 
-@st.dialog("Edit task", width="medium")
+@st.dialog("Edit task", width="medium", on_dismiss=close_dialog)
 def edit_task(task: api.Task, courses: list[api.Course]) -> None:
     tid = task["id"]
     st.caption(TYPES[task["type"]])
@@ -188,7 +201,7 @@ def edit_task(task: api.Task, courses: list[api.Course]) -> None:
         st.rerun(scope="fragment")
 
 
-@st.dialog("New course")
+@st.dialog("New course", on_dismiss=close_dialog)
 def add_course() -> None:
     with st.form("add-course", border=False):
         name = st.text_input(
@@ -208,7 +221,7 @@ def add_course() -> None:
                 notify(f"Added the course {plain(created['name'])}.")
 
 
-@st.dialog("Course settings")
+@st.dialog("Course settings", on_dismiss=close_dialog)
 def edit_course(course: api.Course, has_tasks: bool) -> None:
     cid = course["id"]
     with st.form(f"rename-{cid}", border=False):
@@ -239,3 +252,28 @@ def edit_course(course: api.Course, has_tasks: bool) -> None:
         else:
             st.session_state.pop("course", None)  # leave the deleted course's page
             notify(f"Deleted the course {plain(course['name'])}.")
+
+
+def show_open(courses: list[api.Course], tasks: list[api.Task]) -> None:
+    """Draw the open dialog, if any. The page calls this once, at the end of every run."""
+    dialog = st.session_state.get("dialog")
+    if dialog is None:
+        return
+    match dialog["name"]:
+        case "add-task":
+            add_task(courses, dialog.get("course_id"))
+        case "add-course":
+            add_course()
+        case "edit-task":
+            task = next((t for t in tasks if t["id"] == dialog["task_id"]), None)
+            if task is None:  # e.g. hidden by "Show finished"
+                close_dialog()
+            else:
+                edit_task(task, courses)
+        case "edit-course":
+            course = next((c for c in courses if c["id"] == dialog["course_id"]), None)
+            if course is None:
+                close_dialog()
+            else:
+                has_tasks = any(t["course_id"] == course["id"] for t in tasks)
+                edit_course(course, has_tasks)
