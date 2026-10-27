@@ -40,7 +40,16 @@ class CourseTasks(TypedDict):
 
 
 class BackendError(Exception):
-    """Something went wrong; str(error) is a message you can show to a user."""
+    """Something went wrong; str(error) is an English message you can show to a user.
+
+    `code` and `details` name the failure, so the page can show it in another
+    language (see texts.error_message) without parsing the English message.
+    """
+
+    def __init__(self, message: str, code: str = "", **details) -> None:
+        super().__init__(message)
+        self.code = code
+        self.details = details
 
 
 class BackendUnavailable(BackendError):
@@ -55,7 +64,8 @@ class NotLoggedIn(BackendError):
     """The backend answered 401: wrong email or password, or the session ended."""
 
 
-def _friendly(response: httpx.Response) -> str:
+def _failure(response: httpx.Response) -> tuple[str, str, dict]:
+    """The English message, a code, and details for a 4xx or 5xx answer."""
     match response.status_code:
         case 422:
             problems = []
@@ -63,13 +73,22 @@ def _friendly(response: httpx.Response) -> str:
                 field = err["loc"][-1] if len(err["loc"]) > 1 else ""
                 message = err["msg"].removeprefix("Value error, ")
                 problems.append(f"{field}: {message}" if field else message)
-            return "Please fix: " + "; ".join(problems)
+            return (
+                "Please fix: " + "; ".join(problems),
+                "invalid",
+                {"problems": problems},
+            )
         case 404:
-            return "That item no longer exists. Reload the page."
+            return "That item no longer exists. Reload the page.", "not_found", {}
         case 401 | 409:  # not logged in, or a conflict; the backend says which
-            return response.json()["detail"]
+            detail = response.json()["detail"]
+            return detail, "backend_says", {"detail": detail}
         case code:
-            return f"The backend failed ({code}). Check its logs."
+            return (
+                f"The backend failed ({code}). Check its logs.",
+                "server_error",
+                {"status": code},  # not "code": that name is the error's own code
+            )
 
 
 def _request(method: str, path: str, **kwargs) -> httpx.Response:
@@ -79,21 +98,26 @@ def _request(method: str, path: str, **kwargs) -> httpx.Response:
     except NOT_SENT as exc:
         raise BackendUnavailable(
             f"Cannot reach the backend at {BACKEND_URL}. "
-            "Start it (uv run fastapi dev in backend/) and reload the page."
+            "Start it (uv run fastapi dev in backend/) and reload the page.",
+            "unavailable",
         ) from exc
     except httpx.TransportError as exc:  # sent, but no complete reply
         if method == "GET":
             raise BackendNoAnswer(
-                "The backend took too long to answer. Reload the page to try again."
+                "The backend took too long to answer. Reload the page to try again.",
+                "no_answer_read",
             ) from exc
         raise BackendNoAnswer(
             "The backend did not answer in time. Your change may have been saved. "
-            "Reload the page and check before trying again."
+            "Reload the page and check before trying again.",
+            "no_answer_write",
         ) from exc
     if response.status_code == 401:
-        raise NotLoggedIn(_friendly(response))
+        message, code, details = _failure(response)
+        raise NotLoggedIn(message, code, **details)
     if response.is_error:
-        raise BackendError(_friendly(response))
+        message, code, details = _failure(response)
+        raise BackendError(message, code, **details)
     return response
 
 
@@ -103,13 +127,15 @@ def _json(response: httpx.Response) -> Any:
     except ValueError as exc:  # not JSON, e.g. an HTML page from another server
         raise BackendError(
             f"The service at {BACKEND_URL} did not answer like the Smart Study Planner API. "
-            "Check BACKEND_URL."
+            "Check BACKEND_URL.",
+            "wrong_service",
         ) from exc
 
 
 class UserInfo(TypedDict):
     id: int
     email: str
+    language: str
 
 
 def sign_up(email: str, password: str) -> UserInfo:
@@ -141,6 +167,9 @@ class Backend:
 
     def me(self) -> UserInfo:
         return _json(self._call("GET", "/auth/me"))
+
+    def set_language(self, language: str) -> UserInfo:
+        return _json(self._call("PATCH", "/auth/me", json={"language": language}))
 
     def log_out(self) -> None:
         self._call("POST", "/auth/logout")

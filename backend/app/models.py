@@ -20,6 +20,13 @@ class TaskType(StrEnum):
     PROJECT = "project"  # פרויקט
 
 
+class Language(StrEnum):
+    """The interface language a user chose; their own text is never translated."""
+
+    ENGLISH = "en"
+    HEBREW = "he"
+
+
 class TaskStatus(StrEnum):
     TODO = "todo"
     IN_PROGRESS = "in_progress"
@@ -55,6 +62,10 @@ class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     email: str = Field(unique=True, index=True)  # stored in lower case
     password_hash: str  # never the password itself, see app/auth.py
+    # Stored as plain text ("en", "he"): a database enum column would store the
+    # member *name* ("ENGLISH"), which an added column's default cannot match.
+    # The API still accepts only Language values (see UserSettings).
+    language: str = Field(default=Language.ENGLISH.value)
 
 
 class AuthToken(SQLModel, table=True):
@@ -77,6 +88,15 @@ class Credentials(SQLModel):
 class UserPublic(SQLModel):
     id: int
     email: str
+    language: Language
+
+
+class UserSettings(SQLModel):
+    """Body for PATCH /auth/me: what a user may change about their own account."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    language: Language
 
 
 class TokenPublic(SQLModel):

@@ -18,6 +18,8 @@ borderColor = "#E9E1D1"              # thin warm lines instead of grey boxes
 linkColor = "#B08D57"
 greenBackgroundColor = "#F8F5EF"     # success messages: the cream of a hovered row
 greenTextColor = "#7A5C2E"           # dark gold, readable on cream
+# Jost has no Hebrew letters; the browser shows Hebrew in its own sans-serif font.
+# (Streamlit accepts only one font URL here.)
 font = "Jost:https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&display=swap"
 baseFontSize = 20                    # two steps larger than the default 16, on every screen
 baseFontWeight = 400

@@ -35,7 +35,7 @@ Every student has an account and sees only their own courses and tasks.
 - Every `/courses` and `/tasks` request sends it as `Authorization: Bearer <token>`; without a valid token the answer is `401`.
 - Another user's course or task answers `404`, as if it did not exist.
 - Passwords are stored only as salted scrypt hashes; tokens are stored only as SHA-256 hashes and expire after 14 days.
-- `POST /auth/logout` ends the session; `GET /auth/me` returns the logged-in user.
+- `POST /auth/logout` ends the session; `GET /auth/me` returns the logged-in user, and `PATCH /auth/me` with `{"language": "en" | "he"}` changes their interface language (default `en`).
 
 In `/docs`, log in with `POST /auth/login`, copy the token, and paste it under **Authorize**.
 
@@ -79,7 +79,8 @@ Sending a field that does not fit the task's type returns `422`.
 | `POST /auth/signup` | create an account | 201 | 409 email taken, 422 |
 | `POST /auth/login` | get a token | 200 | 401 wrong email or password |
 | `POST /auth/logout` | end this session | 204 | 401 |
-| `GET /auth/me` | the logged-in user | 200 | 401 |
+| `GET /auth/me` | the logged-in user, with their language | 200 | 401 |
+| `PATCH /auth/me` | change the interface language (`en` or `he`) | 200 | 401, 422 |
 | `GET /courses` | all courses by name | 200 | |
 | `POST /courses` | create a course | 201 | 409 name taken, 422 |
 | `PATCH /courses/{id}` | rename a course | 200 | 404, 409, 422 |
@@ -109,6 +110,10 @@ uv run fastapi dev app/main.py
 ```
 
 Open http://localhost:8000/docs. Data is stored in `backend/data/app.db`, which is created on first start.
+
+### Database changes
+
+`create_all` creates missing tables but never changes existing ones. Columns added to a model later are listed in `ADDED_COLUMNS` in `app/db.py` and added at startup with their default, so an existing `data/app.db` keeps its data.
 
 ### Configuration
 
@@ -179,6 +184,8 @@ uv run streamlit run streamlit_app.py
 
 Open http://localhost:8501, then **Sign up** or **Log in** (the login lasts until you log out or reload the page). **By urgency** shows one numbered list, the most urgent first. **By course** shows a card per course with all of its tasks; **+ New course** adds a course, and each card has its own **Add task** and **Settings** (rename or delete). **Add task** opens a form whose fields follow the task type. Expand a task to see its details, mark it done, or edit and delete it.
 
+**Language:** the **English | עברית** switch at the top changes every interface text; Hebrew is laid out right to left. While logged in the choice is saved to the account, and logging in brings it back. What users type (course names, titles, notes) is never translated.
+
 | Variable | Default | Purpose |
 |---|---|---|
 | `BACKEND_URL` | `http://127.0.0.1:8000` | where the frontend sends API requests |
@@ -218,6 +225,7 @@ frontend/
   views.py         the screens: numbered list, and course cards with their tasks
   dialogs.py       pop-up forms: add/edit task, add/rename/delete course
   labels.py        names, icons and due-date wording
+  texts.py         every interface text in English and Hebrew, and the current language
   api.py           every HTTP call to the backend, with user-facing error messages
   .streamlit/config.toml  theme: white and gold, Jost font, round buttons, 20 px base size
 ```

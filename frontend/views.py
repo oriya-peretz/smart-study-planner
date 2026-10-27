@@ -1,4 +1,4 @@
-"""The screens: a numbered list by urgency, a grid of courses, and one course's page."""
+"""The screens: a numbered list by urgency, and a grid of courses with their tasks."""
 
 from datetime import date
 
@@ -9,14 +9,15 @@ import api
 import dialogs
 from labels import (
     FINISHED,
-    STATUSES,
     TYPE_ICONS,
-    TYPES,
     countdown,
     is_link,
     plain,
+    status_name,
+    type_name,
     when,
 )
+from texts import error_message, separator, t
 
 CARDS_PER_ROW = 3
 
@@ -36,23 +37,23 @@ def task_row(
     parts = [f":primary[{number:02d}]", f"**{title}**"]
     if show_course:
         parts.append(plain(task["course"]["name"]))
-    parts += [TYPES[task["type"]], countdown(task, today)]
-    with st.expander("  ·  ".join(parts), icon=TYPE_ICONS[task["type"]]):
+    parts += [type_name(task["type"]), countdown(task, today)]
+    with st.expander(separator().join(parts), icon=TYPE_ICONS[task["type"]]):
         details = [when(task)]
         if task["type"] != "exam":
-            details.append(STATUSES[task["status"]])
+            details.append(status_name(task["status"]))
         if task["estimated_hours"]:
-            details.append(f"{task['estimated_hours']:g} h")
+            details.append(t("hours", h=f"{task['estimated_hours']:g}"))
         if task["location"]:
             details.append(plain(task["location"]))
-        st.caption("  ·  ".join(details))
+        st.caption(separator().join(details))
         if task["link"]:
             if is_link(task["link"]):
-                st.link_button("Open link", task["link"], icon=":material/open_in_new:")
-            else:
-                st.caption(
-                    "Local file or folder (copy the path, then paste it in File Explorer):"
+                st.link_button(
+                    t("open_link"), task["link"], icon=":material/open_in_new:"
                 )
+            else:
+                st.caption(t("local_path"))
                 st.code(task["link"], language=None)
         if task["notes"]:
             st.markdown(plain(task["notes"]))
@@ -64,16 +65,16 @@ def task_row(
         )
         can_finish = task["type"] != "exam" and task["status"] != "done"
         if can_finish and done_col.button(
-            "Mark as done", key=f"done-{tid}", icon=":material/check:", width="stretch"
+            t("mark_done"), key=f"done-{tid}", icon=":material/check:", width="stretch"
         ):
             try:
                 account.backend().update_task(tid, {"status": "done"})
             except api.BackendError as exc:
-                st.error(str(exc))
+                st.error(error_message(exc))
             else:
-                dialogs.notify(f"Marked {plain(task['title'])} as done.")
+                dialogs.notify(t("marked_done", title=plain(task["title"])))
         if edit_col.button(
-            "Edit", key=f"edit-{tid}", icon=":material/edit:", width="stretch"
+            t("edit"), key=f"edit-{tid}", icon=":material/edit:", width="stretch"
         ):
             dialogs.open_dialog("edit-task", task_id=tid)
 
@@ -90,11 +91,9 @@ def numbered_list(
 
 def urgency_view(tasks: list[api.Task], courses: list[api.Course], today: date) -> None:
     if not courses:
-        st.info(
-            "Welcome! Start by adding a course: choose **By course**, then the **+** card."
-        )
+        st.info(t("welcome"))
     elif not tasks:
-        st.info("No tasks here. Use **Add task** to add one.")
+        st.info(t("no_tasks"))
     numbered_list(tasks, courses, today)
 
 
@@ -104,14 +103,16 @@ def course_card(group: api.CourseTasks, courses: list[api.Course], today: date) 
     cid = course["id"]
     open_count = sum(task["status"] not in FINISHED for task in group["tasks"])
     st.markdown(f"#### {plain(course['name'])}")
-    st.caption(f"{open_count} open task{'s' if open_count != 1 else ''}")
+    st.caption(
+        t("open_tasks_one") if open_count == 1 else t("open_tasks_many", n=open_count)
+    )
     add_col, settings_col = st.columns(2)
     if add_col.button(
-        "Add task", key=f"course-add-{cid}", type="tertiary", icon=":material/add:"
+        t("add_task"), key=f"course-add-{cid}", type="tertiary", icon=":material/add:"
     ):
         dialogs.open_dialog("add-task", course_id=cid)
     if settings_col.button(
-        "Settings",
+        t("settings"),
         key=f"course-settings-{cid}",
         type="tertiary",
         icon=":material/tune:",
@@ -120,7 +121,7 @@ def course_card(group: api.CourseTasks, courses: list[api.Course], today: date) 
     if group["tasks"]:
         numbered_list(group["tasks"], courses, today, show_course=False)
     else:
-        st.caption(":gray[No tasks yet]")
+        st.caption(f":gray[{t('no_tasks_yet')}]")
 
 
 def course_grid(
@@ -134,7 +135,7 @@ def course_grid(
                 if group is None:
                     st.space("small")
                     if st.button(
-                        "New course",
+                        t("new_course"),
                         key="new-course",
                         type="tertiary",
                         icon=":material/add:",
