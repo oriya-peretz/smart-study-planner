@@ -250,7 +250,6 @@ def edit_course(course: api.Course, has_tasks: bool) -> None:
         except api.BackendError as exc:
             st.error(str(exc))
         else:
-            st.session_state.pop("course", None)  # leave the deleted course's page
             notify(f"Deleted the course {plain(course['name'])}.")
 
 
