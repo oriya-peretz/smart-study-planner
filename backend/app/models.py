@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import AfterValidator, ConfigDict, NaiveDatetime, model_validator
+from pydantic import AfterValidator, ConfigDict, EmailStr, NaiveDatetime, model_validator
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -41,12 +41,46 @@ def to_local_time(value: datetime) -> datetime:
 LocalDatetime = Annotated[datetime, AfterValidator(to_local_time)]
 
 
+class User(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    email: str = Field(unique=True, index=True)  # stored in lower case
+    password_hash: str  # never the password itself, see app/auth.py
+
+
+class AuthToken(SQLModel, table=True):
+    """A logged-in session. Only a hash of the token is stored, like a password."""
+
+    token_hash: str = Field(primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    expires_at: NaiveDatetime  # local time, like due_at
+
+
+class Credentials(SQLModel):
+    """Body for sign-up and log-in."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserPublic(SQLModel):
+    id: int
+    email: str
+
+
+class TokenPublic(SQLModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 class CourseBase(SQLModel):
     name: str = Field(min_length=1, max_length=100)
 
 
 class Course(CourseBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
 
 
 class CourseCreate(CourseBase):
