@@ -65,7 +65,7 @@ def _form(signing_up: bool) -> None:
 def landing() -> None:
     """The first screen from the sketch: the name, then Log in and Sign up."""
     st.html('<p class="tagline">Every exam, assignment and project, in one place.</p>')
-    _, middle, _ = st.columns([1, 1.3, 1])
+    _, middle, _ = st.columns([1, 1.8, 1])
     with middle:
         mode = st.session_state.get("auth-mode")
         if mode is None:
