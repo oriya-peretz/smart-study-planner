@@ -36,10 +36,8 @@ def test_password_is_never_stored(anon, session):
 def test_sign_up_returns_the_user_without_password(anon):
     response = anon.post("/auth/signup", json=credentials("New@Example.com"))
     assert response.status_code == 201
-    assert response.json() == {
-        "id": 1,
-        "email": "new@example.com",
-    }  # stored in lower case
+    # The email is stored in lower case; a new account starts in English.
+    assert response.json() == {"id": 1, "email": "new@example.com", "language": "en"}
 
 
 def test_email_is_taken_ignoring_case(anon):
@@ -165,3 +163,32 @@ def test_two_users_may_have_courses_with_the_same_name(make_client):
     alice, bob = make_client("alice@example.com"), make_client("bob@example.com")
     assert alice.post("/courses", json={"name": "Automata"}).status_code == 201
     assert bob.post("/courses", json={"name": "Automata"}).status_code == 201
+
+
+# ---- Language ----
+
+
+def test_language_defaults_to_english(client):
+    assert client.get("/auth/me").json()["language"] == "en"
+
+
+def test_language_can_be_changed_and_is_kept(client):
+    response = client.patch("/auth/me", json={"language": "he"})
+    assert response.status_code == 200
+    assert response.json()["language"] == "he"
+    assert client.get("/auth/me").json()["language"] == "he"
+
+
+def test_unknown_language_or_other_fields_are_rejected(client):
+    assert client.patch("/auth/me", json={"language": "fr"}).status_code == 422
+    assert client.patch("/auth/me", json={"email": "x@example.com"}).status_code == 422
+
+
+def test_changing_language_needs_a_token(anon):
+    assert anon.patch("/auth/me", json={"language": "he"}).status_code == 401
+
+
+def test_each_user_has_their_own_language(make_client):
+    alice, bob = make_client("alice@example.com"), make_client("bob@example.com")
+    alice.patch("/auth/me", json={"language": "he"})
+    assert bob.get("/auth/me").json()["language"] == "en"

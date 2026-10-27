@@ -11,7 +11,14 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import select
 
 from app import db
-from app.models import AuthToken, Credentials, TokenPublic, User, UserPublic
+from app.models import (
+    AuthToken,
+    Credentials,
+    TokenPublic,
+    User,
+    UserPublic,
+    UserSettings,
+)
 
 TOKEN_LIFETIME = timedelta(days=14)
 
@@ -112,4 +119,14 @@ def log_out(
 
 @router.get("/me", response_model=UserPublic)
 def me(user: CurrentUser) -> User:
+    return user
+
+
+@router.patch("/me", response_model=UserPublic)
+def update_me(body: UserSettings, session: db.SessionDep, user: CurrentUser) -> User:
+    """Change the logged-in user's own settings (today: the interface language)."""
+    user.language = body.language
+    session.add(user)
+    session.commit()
+    session.refresh(user)
     return user
