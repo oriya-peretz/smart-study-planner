@@ -21,7 +21,7 @@ st.html(
     <style>
       .wordmark { text-align: center; font-weight: 300; font-size: 1.6rem;
                   letter-spacing: .42em; text-transform: uppercase; margin-top: 1rem; }
-      .wordmark.hero { font-size: 2.75rem; line-height: 1.5; margin-top: 12vh; }
+      .wordmark.hero { font-size: 2.48rem; line-height: 1.5; margin-top: 12vh; }
       .gold-rule { width: 56px; height: 1px; background: #B08D57; margin: .9rem auto 1.6rem; }
       .tagline { text-align: center; font-weight: 300; color: #7A7266; margin-bottom: 2rem; }
       .tagline.notice { color: #B08D57; margin-bottom: .4rem; }
@@ -33,15 +33,15 @@ st.html(
 
 if not account.is_logged_in():
     # Drawn only before logging in, so these larger sizes never reach the app itself.
-    # In rem, so they follow theme.baseFontSize (18 px).
+    # In rem, so they follow theme.baseFontSize (20 px).
     st.html(
         """
         <style>
-          .tagline { font-size: 1.07rem; }
-          [data-testid="stWidgetLabel"] p { font-size: 0.98rem; }
-          [data-testid="stTextInput"] input { font-size: 1.02rem; min-height: 2.7rem; }
-          .stButton button, [data-testid="stFormSubmitButton"] button { min-height: 2.75rem; }
-          .stButton button p, [data-testid="stFormSubmitButton"] button p { font-size: 0.98rem; }
+          .tagline { font-size: 0.96rem; }
+          [data-testid="stWidgetLabel"] p { font-size: 0.88rem; }
+          [data-testid="stTextInput"] input { font-size: 0.92rem; min-height: 2.43rem; }
+          .stButton button, [data-testid="stFormSubmitButton"] button { min-height: 2.48rem; }
+          .stButton button p, [data-testid="stFormSubmitButton"] button p { font-size: 0.88rem; }
         </style>
         <div class="wordmark hero">Smart Study Planner</div><div class="gold-rule"></div>
         """
@@ -88,19 +88,15 @@ except api.BackendError as exc:
     st.stop()  # nothing else on this page works without the backend
 
 today = date.today()
-open_course = st.session_state.get("course") if view == "By course" else None
-
-if open_course is None and add_col.button(
+if add_col.button(
     "Add task", key="add-task", type="primary", icon=":material/add:", width="stretch"
 ):
     dialogs.open_dialog("add-task")
 
 if view == "By urgency":
     views.urgency_view(tasks, courses, today)
-elif group := next((g for g in groups if g["course"]["id"] == open_course), None):
-    views.course_page(group, courses, today)
 else:
-    views.course_grid(groups, today)
+    views.course_grid(groups, courses, today)
 
 loaded = tasks if view == "By urgency" else [t for g in groups for t in g["tasks"]]
 dialogs.show_open(courses, loaded)

@@ -159,17 +159,38 @@ def test_welcome_message_before_the_first_course(backend):
     assert len(at.expander) == 0
 
 
-def test_by_course_shows_a_card_per_course_and_a_new_course_card(backend):
+def test_by_course_lists_every_task_inside_its_course_card(backend):
     groups = [
-        {"course": STATISTICS, "tasks": [task(1, "Quiz 2", STATISTICS, days=1)]},
+        {
+            "course": STATISTICS,
+            "tasks": [
+                task(1, "Quiz 2", STATISTICS, days=1),
+                task(2, "Lab report", STATISTICS, days=5),
+            ],
+        },
         {"course": AUTOMATA, "tasks": []},
     ]
     at = logged_in(backend, [AUTOMATA, STATISTICS], groups=groups)
     at.button_group(key="view").set_value("By course").run()
+
     headings = [m.value for m in at.markdown if m.value.startswith("####")]
     assert headings == ["#### Statistics", "#### Automata"]
-    assert "Next: Quiz 2" in " ".join(m.value for m in at.markdown)
+    labels = [e.label for e in at.expander]
+    assert "Quiz 2" in labels[0] and "Lab report" in labels[1]
+    assert all(
+        "Statistics" not in label for label in labels
+    )  # the card says it already
+    assert "No tasks yet" in " ".join(c.value for c in at.caption)
     assert at.button(key="new-course").label == "New course"
+
+
+def test_add_task_from_a_course_card_preselects_that_course(backend):
+    at = logged_in(
+        backend, [AUTOMATA, STATISTICS], groups=[{"course": STATISTICS, "tasks": []}]
+    )
+    at.button_group(key="view").set_value("By course").run()
+    at.button(key="course-add-2").click().run()
+    assert at.selectbox(key="add-course").value == 2
 
 
 # ---- Failures ----

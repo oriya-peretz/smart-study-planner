@@ -18,7 +18,7 @@ from labels import (
     when,
 )
 
-CARDS_PER_ROW = 3
+CARDS_PER_ROW = 2  # two, so each card has room for its task list
 
 
 def task_row(
@@ -94,28 +94,34 @@ def urgency_view(tasks: list[api.Task], courses: list[api.Course], today: date) 
     numbered_list(tasks, courses, today)
 
 
-def course_card(group: api.CourseTasks, today: date) -> None:
+def course_card(group: api.CourseTasks, courses: list[api.Course], today: date) -> None:
+    """One course with all of its tasks, so nothing needs a separate page."""
     course = group["course"]
-    open_tasks = [task for task in group["tasks"] if task["status"] not in FINISHED]
+    cid = course["id"]
+    open_count = sum(task["status"] not in FINISHED for task in group["tasks"])
     st.markdown(f"#### {plain(course['name'])}")
-    count = len(open_tasks)
-    st.caption(f"{count} open task{'s' if count != 1 else ''}")
-    if open_tasks:
-        upcoming = open_tasks[0]
-        st.markdown(f"Next: {plain(upcoming['title'])}  \n{countdown(upcoming, today)}")
-    else:
-        st.markdown(":gray[Nothing due]  \n&nbsp;")
-    if st.button(
-        "Open",
-        key=f"open-course-{course['id']}",
-        type="tertiary",
-        icon=":material/arrow_forward:",
+    st.caption(f"{open_count} open task{'s' if open_count != 1 else ''}")
+    add_col, settings_col = st.columns(2)
+    if add_col.button(
+        "Add task", key=f"course-add-{cid}", type="tertiary", icon=":material/add:"
     ):
-        st.session_state["course"] = course["id"]
-        st.rerun()
+        dialogs.open_dialog("add-task", course_id=cid)
+    if settings_col.button(
+        "Settings",
+        key=f"course-settings-{cid}",
+        type="tertiary",
+        icon=":material/tune:",
+    ):
+        dialogs.open_dialog("edit-course", course_id=cid)
+    if group["tasks"]:
+        numbered_list(group["tasks"], courses, today, show_course=False)
+    else:
+        st.caption(":gray[No tasks yet]")
 
 
-def course_grid(groups: list[api.CourseTasks], today: date) -> None:
+def course_grid(
+    groups: list[api.CourseTasks], courses: list[api.Course], today: date
+) -> None:
     cards: list[api.CourseTasks | None] = [*groups, None]  # None is the "+" card
     for start in range(0, len(cards), CARDS_PER_ROW):
         columns = st.columns(CARDS_PER_ROW)
@@ -132,32 +138,4 @@ def course_grid(groups: list[api.CourseTasks], today: date) -> None:
                     ):
                         dialogs.open_dialog("add-course")
                 else:
-                    course_card(group, today)
-
-
-def course_page(group: api.CourseTasks, courses: list[api.Course], today: date) -> None:
-    course = group["course"]
-    if st.button(
-        "All courses", key="back", type="tertiary", icon=":material/arrow_back:"
-    ):
-        st.session_state.pop("course")
-        st.rerun()
-    title_col, settings_col, add_col = st.columns(
-        [3, 1, 1], vertical_alignment="center"
-    )
-    title_col.header(plain(course["name"]))
-    if settings_col.button(
-        "Settings", key="course-settings", icon=":material/tune:", width="stretch"
-    ):
-        dialogs.open_dialog("edit-course", course_id=course["id"])
-    if add_col.button(
-        "Add task",
-        key="course-add-task",
-        type="primary",
-        icon=":material/add:",
-        width="stretch",
-    ):
-        dialogs.open_dialog("add-task", course_id=course["id"])
-    if not group["tasks"]:
-        st.info("No tasks in this course yet.")
-    numbered_list(group["tasks"], courses, today, show_course=False)
+                    course_card(group, courses, today)

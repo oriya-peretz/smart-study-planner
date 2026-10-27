@@ -177,7 +177,7 @@ From `frontend/`, with the backend running:
 uv run streamlit run streamlit_app.py
 ```
 
-Open http://localhost:8501, then **Sign up** or **Log in** (the login lasts until you log out or reload the page). **By urgency** shows one numbered list, the most urgent first. **By course** shows a card per course; **+ New course** adds one, and **Open** shows that course's tasks. **Add task** opens a form whose fields follow the task type. Expand a task to see its details, mark it done, or edit and delete it.
+Open http://localhost:8501, then **Sign up** or **Log in** (the login lasts until you log out or reload the page). **By urgency** shows one numbered list, the most urgent first. **By course** shows a card per course with all of its tasks; **+ New course** adds a course, and each card has its own **Add task** and **Settings** (rename or delete). **Add task** opens a form whose fields follow the task type. Expand a task to see its details, mark it done, or edit and delete it.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -215,11 +215,11 @@ backend/
 frontend/
   streamlit_app.py the page Streamlit runs: loads data, picks a screen
   account.py       landing screen, log in, sign up, log out
-  views.py         the screens: numbered list, course grid, course page
+  views.py         the screens: numbered list, and course cards with their tasks
   dialogs.py       pop-up forms: add/edit task, add/rename/delete course
   labels.py        names, icons and due-date wording
   api.py           every HTTP call to the backend, with user-facing error messages
-  .streamlit/config.toml  theme: white and gold, Jost font, round buttons
+  .streamlit/config.toml  theme: white and gold, Jost font, round buttons, 20 px base size
 ```
 
 ## AI-use note
