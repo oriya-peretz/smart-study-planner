@@ -71,7 +71,7 @@ def task_row(
         if edit_col.button(
             "Edit", key=f"edit-{tid}", icon=":material/edit:", width="stretch"
         ):
-            dialogs.edit_task(task, courses)
+            dialogs.open_dialog("edit-task", task_id=tid)
 
 
 def numbered_list(
@@ -130,7 +130,7 @@ def course_grid(groups: list[api.CourseTasks], today: date) -> None:
                         icon=":material/add:",
                         width="stretch",
                     ):
-                        dialogs.add_course()
+                        dialogs.open_dialog("add-course")
                 else:
                     course_card(group, today)
 
@@ -149,7 +149,7 @@ def course_page(group: api.CourseTasks, courses: list[api.Course], today: date) 
     if settings_col.button(
         "Settings", key="course-settings", icon=":material/tune:", width="stretch"
     ):
-        dialogs.edit_course(course, has_tasks=bool(group["tasks"]))
+        dialogs.open_dialog("edit-course", course_id=course["id"])
     if add_col.button(
         "Add task",
         key="course-add-task",
@@ -157,7 +157,7 @@ def course_page(group: api.CourseTasks, courses: list[api.Course], today: date) 
         icon=":material/add:",
         width="stretch",
     ):
-        dialogs.add_task(courses, course_id=course["id"])
+        dialogs.open_dialog("add-task", course_id=course["id"])
     if not group["tasks"]:
         st.info("No tasks in this course yet.")
     numbered_list(group["tasks"], courses, today, show_course=False)

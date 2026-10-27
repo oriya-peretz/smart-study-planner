@@ -183,6 +183,20 @@ Open http://localhost:8501, then **Sign up** or **Log in** (the login lasts unti
 |---|---|---|
 | `BACKEND_URL` | `http://127.0.0.1:8000` | where the frontend sends API requests |
 
+### Frontend tests
+
+From `frontend/`:
+
+```bash
+uv run pytest
+uv run ruff check .
+```
+
+`tests/test_app.py` runs the page with Streamlit's `AppTest` (no browser) and fakes the backend with `respx`, so each state can be produced on demand: the landing screen, log in and sign up (including a wrong password and a validation error), both views and the empty state, the backend being down, an expired session, a write whose reply was lost, and the exact JSON the forms send with the user's token.
+`tests/test_boundary.py` checks that only `api.py` talks HTTP.
+
+What these tests do not cover: a real browser, and whether the real backend still answers in the shapes the fakes use. The backend's tests cover the backend's side of that contract.
+
 `127.0.0.1` rather than `localhost`: on Windows, `localhost` tries IPv6 first and adds about 2 seconds to every request.
 
 ## Project layout
