@@ -127,7 +127,7 @@ def log_in(email: str, password: str) -> str:
 
 
 class Backend:
-    """The API as seen by one logged-in user: every request carries her token.
+    """The API as seen by one logged-in user: every request carries that user's token.
 
     Streamlit serves every visitor from the same Python process, so the token
     lives in this object (one per browser tab), never in a global variable.

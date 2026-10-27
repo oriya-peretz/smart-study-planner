@@ -28,7 +28,7 @@ Open http://localhost:8501 for the app, or http://localhost:8000/docs for the AP
 
 ## Accounts
 
-Each student has her own account and sees only her own courses and tasks.
+Every student has an account and sees only their own courses and tasks.
 
 - `POST /auth/signup` with `{"email", "password"}` (password: 8-128 characters) creates an account.
 - `POST /auth/login` with the same body returns `{"access_token": "..."}`.
