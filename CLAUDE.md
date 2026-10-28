@@ -37,6 +37,9 @@ frontend/  Streamlit, port 8501
   dialogs.py        dialogs driven by session_state["dialog"] and on_dismiss
   labels.py, texts.py  task wording; every UI text in en and he; error translation
   api.py            the only HTTP client (httpx); every error carries a code
+ai-service/  FastAPI, port 8001, stores nothing (EX3)
+  app/schemas.py   POST /plan contract: start_date, constraints, tasks -> days, assessments
+  app/planner.py   deterministic baseline: half-hour units, Moore-Hodgson, least slack first
 .github/workflows/ci.yml  per service: uv sync --locked, ruff check, ruff format --check, pytest; advisory uv audit
 ```
 
@@ -80,7 +83,7 @@ git fetch --all && git rev-parse --short origin/main personal/main   # both repo
 
 Progress at the time of writing (check against the repo):
 - EX1 and EX2 are done.
-- EX3 has not started: **wait for the user's go-ahead.**
+- EX3 is in progress, one step per PR (see the plan below). Check `ls ai-service` and the open PRs for how far it got.
 - The upstream PRs have not started.
 
 ## EX3 plan (agreed with the user)
