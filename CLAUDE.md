@@ -39,7 +39,8 @@ frontend/  Streamlit, port 8501
   api.py            the only HTTP client (httpx); every error carries a code
 ai-service/  FastAPI, port 8001, stores nothing (EX3)
   app/schemas.py   POST /plan contract: start_date, constraints, tasks -> days, assessments
-  app/planner.py   deterministic baseline: half-hour units, Moore-Hodgson, least slack first
+  app/planner.py   deterministic baseline: half-hour units, Moore-Hodgson, least slack first; proposal_problems checks the model's week
+  app/agent.py     Pydantic AI agent (AI_MODEL, test by default): task ids and hours only, no free text
 .github/workflows/ci.yml  per service: uv sync --locked, ruff check, ruff format --check, pytest; advisory uv audit
 ```
 
@@ -52,6 +53,7 @@ ai-service/  FastAPI, port 8001, stores nothing (EX3)
 - Passwords use salted scrypt; tokens are stored as sha256 hashes and expire after 14 days. The token lives in Streamlit `session_state`, so refreshing the page logs the user out (known limit; a cookie could fix it).
 - `User.language` is stored as plain text (`en` or `he`). An enum column stores member *names*, which broke a migrated database.
 - Plan (`ai-service`): the due day is never planned, whatever the time due. `all_fit` is true only if every task sent is `on_track`; a task with no estimate, overdue or later makes it false. A block is allocated hours, not a validated study session (no start time, length or break rules).
+- The model may only rearrange the first week; weeks 2 to 8 are always code. Any model failure returns the baseline with `fallback_reason`, never an error. Logs hold no user text.
 - UI: white and gold theme in `frontend/.streamlit/config.toml` (Jost font, `baseFontSize = 20`, and Streamlit accepts only one font URL). In Hebrew: right-to-left marks around line separators; dates, times, toggles and switches stay left to right; the top bar keeps the same layout as English (the email and Log out on the left, the language on the right). The landing content is vertically centered (`st-key-landing-content`).
 
 ### EASS requirements

@@ -9,7 +9,7 @@ The repository holds three services:
 
 - `backend/`: a FastAPI service with SQLite storage (the API below)
 - `frontend/`: a Streamlit page in the browser that talks to the backend over HTTP
-- `ai-service/`: a FastAPI service that builds a study plan; it stores nothing (in progress, see [AI service](#ai-service))
+- `ai-service/`: a FastAPI service with a Pydantic AI agent that builds a study plan; it stores nothing (in progress, see [AI service](#ai-service))
 
 ## Quick start
 
@@ -210,7 +210,7 @@ What these tests do not cover: a real browser, and whether the real backend stil
 ## AI service
 
 `ai-service/` turns a user's unfinished tasks and free hours into a study plan. It is a separate process on port 8001 and stores nothing: the caller sends everything the plan needs, and the backend will own the saved plan.
-This first version is deterministic (no model yet). A Pydantic AI agent will propose plans next, checked against the same rules, with this plan as the fallback.
+Code builds a deterministic baseline plan first. A Pydantic AI agent may then rearrange the first week; code checks its proposal, and the baseline is the fallback.
 
 From `ai-service/`:
 
@@ -252,6 +252,36 @@ Each entry in a day's `blocks` is **hours allocated to one task on that day, not
 
 `tests/test_planner.py` checks each rule, plus 300 random cases against a brute-force answer: no day is overbooked, nothing is planned on or after a due date, and the number of tasks on time is the best possible.
 
+### The model proposes, the code decides
+
+An optional `note` in the request (up to 500 characters, such as "keep Thursday light") guides the model. The model sees the free hours, the tasks and the baseline, and returns only task ids and hours per day for the first week. It returns no free text, so it cannot invent chapters, topics or materials.
+
+| The model may | Code enforces |
+|---|---|
+| Move hours between days and tasks within the week | Only this week's dates and plannable tasks, in half hours |
+| Follow the user's note as a preference | A day's free hours, nothing on or after a due date, no more hours than a task needs |
+| | Every task on time in the baseline stays on time, and the week keeps the baseline's total hours |
+
+A proposal that breaks a rule goes back to the model with the reasons, at most twice. The note and task titles are data: an instruction inside them cannot change a rule, because the code checks the result whatever the model was told. Weeks 2 to 8 are always planned by the code, from the accepted week.
+
+| In the response | Meaning |
+|---|---|
+| `source: "model"` | the model's week was accepted |
+| `source: "baseline"`, no `fallback_reason` | nothing to arrange this week, so the model was not called |
+| `source: "baseline"`, `fallback_reason` | the model was asked and the baseline was used: `invalid_output`, `budget_exceeded` (5 agent steps, 5 tool calls, 20,000 tokens), `timeout` or `provider_error` |
+
+A failing model never fails the request: the caller always gets a valid plan, labelled honestly. Logs record the reason and the usage counters, never the user's tasks or note.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AI_MODEL` | `test` | the model, as `<provider>:<model>`. `test` is the built-in fake model: no key, no network, no cost. It proposes nothing valid, so plans come from the baseline with `fallback_reason: "invalid_output"` |
+| `OLLAMA_BASE_URL` | none | where a local Ollama listens, such as `http://localhost:11434/v1`, for `AI_MODEL=ollama:<tag>` |
+| `AI_TIMEOUT_SECONDS` | `25` | the wall-clock limit on the model; a local model may need more |
+
+Settings go in a git-ignored `.env` at the repository root (`.env.example` lists them), used with `uv run --env-file ../.env fastapi dev --port 8001`. Only OpenAI-compatible providers are installed (`pydantic-ai-slim[openai]`), which includes Ollama.
+
+`tests/test_agent.py` covers every rule and failure with `FunctionModel`, a scripted fake, and `tests/conftest.py` makes any real model call raise. These tests prove the wiring and the rules. They say nothing about the quality of a real model's plans: that is what the evaluation dataset will measure.
+
 ## Project layout
 
 ```
@@ -278,7 +308,8 @@ ai-service/
   app/
     main.py        /health and POST /plan
     schemas.py     the request and response contract, with validation
-    planner.py     the deterministic plan: free hours, slack, shortfalls
+    planner.py     the deterministic plan, and the checks on the model's week
+    agent.py       the Pydantic AI agent: instructions, tools, output validator
   tests/           pytest tests, including randomized checks of the rules
 ```
 

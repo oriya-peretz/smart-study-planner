@@ -15,7 +15,9 @@ def test_plan(client):
 
     assert response.status_code == 200
     plan = response.json()
+    # The default TestModel proposes nothing valid, so this is the baseline.
     assert plan["source"] == "baseline"
+    assert plan["fallback_reason"] == "invalid_output"
     assert plan["start_date"] == "2026-11-01"
     assert len(plan["days"]) == 7
     assert plan["days"][0]["blocks"] == [{"task_id": 1, "hours": 2.0}]
@@ -43,7 +45,8 @@ def with_task(**fields) -> dict:
         pytest.param(with_task(type="lecture"), id="unknown-type"),
         pytest.param(with_task(due_at="2026-11-04T09:00+02:00"), id="time-zone"),
         pytest.param(with_task(priority=1), id="unknown-task-field"),
-        pytest.param(body([]) | {"note": "x"}, id="unknown-field"),
+        pytest.param(body([]) | {"note": "x" * 501}, id="note-too-long"),
+        pytest.param(body([]) | {"notes": "x"}, id="unknown-field"),
         pytest.param(
             body([task(1, "2026-11-04", 3), task(1, "2026-11-05", 1)]),
             id="duplicate-ids",

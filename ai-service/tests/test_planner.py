@@ -4,8 +4,8 @@ from itertools import combinations
 
 import pytest
 
-from app.planner import DETAIL_DAYS, HORIZON_DAYS, make_plan
-from app.schemas import WEEKDAYS
+from app.planner import DETAIL_DAYS, HORIZON_DAYS, make_plan, proposal_problems
+from app.schemas import WEEKDAYS, ProposedWeek
 from tests.factories import SUNDAY, request, task
 
 
@@ -249,3 +249,53 @@ def test_random_plans_keep_every_rule():
         ]
         on_time = sum(t["assessment"] == "on_track" for t in result.values())
         assert on_time == best_on_time_count(raw, free)
+
+
+def random_week(rng: random.Random, baseline, task_ids: list[int]) -> ProposedWeek:
+    """Half hours given to random tasks, as many as the baseline plans."""
+    pool = int(sum(d.planned_hours for d in baseline.days) * 2)
+    days = []
+    for d in baseline.days:
+        blocks = {}
+        for _ in range(int(d.free_hours * 2)):
+            if pool and rng.random() < 0.9:
+                chosen = rng.choice(task_ids)
+                blocks[chosen] = blocks.get(chosen, 0) + 0.5
+                pool -= 1
+        days.append(
+            {
+                "date": d.date,
+                "blocks": [{"task_id": i, "hours": h} for i, h in blocks.items()],
+            }
+        )
+    return ProposedWeek.model_validate({"days": days})
+
+
+def test_a_random_accepted_week_keeps_what_the_baseline_promises():
+    rng = random.Random(2027)
+    accepted = 0
+    for _ in range(3000):
+        weekly = {name: rng.choice([0, 1, 2, 3]) for name in WEEKDAYS}
+        count = rng.randrange(2, 5)
+        tasks = [
+            task(i, day(rng.randrange(14)), rng.randrange(1, 14) / 2)
+            for i in range(1, count + 1)
+        ]
+        plan_request = request(tasks, weekly_hours=weekly)
+        baseline = make_plan(plan_request)
+        week = random_week(rng, baseline, list(range(1, count + 1)))
+        if proposal_problems(plan_request, baseline, week):
+            continue
+
+        accepted += 1
+        plan = make_plan(plan_request, week)
+        tasks_now = assessed(plan)
+        for t in baseline.tasks:
+            if t.assessment == "on_track":
+                assert tasks_now[t.task_id]["assessment"] == "on_track"
+        assert sum(t.missing_hours for t in plan.tasks) <= sum(
+            t.missing_hours for t in baseline.tasks
+        )
+        for d in plan.days:
+            assert d.planned_hours <= d.free_hours
+    assert accepted > 100  # the loop really tested accepted weeks
