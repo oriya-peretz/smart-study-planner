@@ -79,7 +79,7 @@ cd backend && docker build -t smart-study-planner . && docker run -d --name plan
 git branch --show-current && git status --short
 gh pr list --state open && gh issue list --state open
 gh run list --branch main --workflow CI --limit 1
-git fetch --all && git rev-parse --short origin/main personal/main   # both repos in sync?
+git fetch --all && git rev-parse origin/main personal/main   # both repos in sync?
 ```
 
 Progress at the time of writing (check against the repo):
