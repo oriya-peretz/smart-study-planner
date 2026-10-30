@@ -238,10 +238,14 @@ curl -s localhost:8001/plan -H "content-type: application/json" -d '{
 
 The response lists 7 `days` (free hours, planned hours, and hours per task) and the `tasks` in priority order, each with its `assessment`: `on_track`, `shortfall` (with `missing_hours`), `no_estimate`, `overdue`, or `later` (due after the 8 weeks the plan looks at).
 
+`all_fit` is true only when every task sent is `on_track`. A task the plan could not check (`no_estimate`, `overdue`, `later`) makes it false, even with no shortfall, because the plan cannot claim that task fits; `tasks` gives the reason.
+
+Each entry in a day's `blocks` is **hours allocated to one task on that day, not a study session**: it has no start time, and no minimum length or break rules are checked, so a block can be as short as half an hour.
+
 **Rules the code enforces:**
 
 - A day's free hours come only from the constraints, and no day is planned beyond them.
-- A task is worked on only on days before its due date (an exam's morning is not study time).
+- A task is worked on only on days before its due date. Only the date counts: the due day is never planned, even for a task due at 23:59, so the plan aims to finish a day early and can report a shortfall for a task that could still be finished on the day itself.
 - Estimates are rounded up to half hours. They are estimates: the plan reports how much fits, not that the work will take exactly that long.
 - **Slack** is the free time before a task's due date minus the hours it needs. The next half hour always goes to the task with the least slack, so a long task due on Friday can come before a short one due on Thursday.
 - When not everything fits, the plan keeps the largest possible number of tasks on time (the Moore-Hodgson rule), gives the rest whatever time is left, and reports each one's missing hours. Nothing is hidden or silently dropped.

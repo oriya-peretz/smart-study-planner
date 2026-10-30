@@ -3,7 +3,8 @@
 Hours are counted in half-hour units internally, so sums are exact integers.
 
 1. Free time per day comes only from the constraints (blocked dates have none).
-2. A task can be worked on only on days before its due date.
+2. A task can be worked on only on days before its due date, whatever the time
+   it is due: the due day itself is never planned, even for a task due at 23:59.
 3. If not every task fits, keep the largest number of tasks on time
    (Moore-Hodgson); the others still get whatever time is left, and their
    missing hours are reported.
@@ -188,7 +189,7 @@ def make_plan(request: PlanRequest) -> PlanResponse:
         start_date=start,
         horizon_end=days[-1],
         source="baseline",
-        all_fit=all(r.assessment != Assessment.SHORTFALL for r in results),
+        all_fit=all(r.assessment == Assessment.ON_TRACK for r in results),
         days=detail,
         tasks=results,
     )

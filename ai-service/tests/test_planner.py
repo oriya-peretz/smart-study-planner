@@ -2,6 +2,8 @@ import random
 from datetime import timedelta
 from itertools import combinations
 
+import pytest
+
 from app.planner import DETAIL_DAYS, HORIZON_DAYS, make_plan
 from app.schemas import WEEKDAYS
 from tests.factories import SUNDAY, request, task
@@ -80,6 +82,27 @@ def test_work_stops_the_day_before_the_due_date():
     assert assessed(plan)[1]["missing_hours"] == 6
 
 
+@pytest.mark.parametrize("time", ["00:00", "08:00", "23:59"])
+def test_the_due_day_is_never_planned_whatever_the_time(time):
+    # Due Tuesday: Sunday and Monday are usable, Tuesday is not, though it has
+    # 2 free hours and the task needs 6.
+    plan = make_plan(request([task(1, f"{day(2)}T{time}", 6)]))
+
+    assert hours_by_day(plan, 1) == [2, 2, 0, 0, 0, 0, 0]
+    assert plan.days[2].free_hours == 2
+    assert assessed(plan)[1]["free_hours_before_due"] == 4
+    assert assessed(plan)[1]["missing_hours"] == 2
+
+
+def test_a_task_due_late_today_gets_no_time_today():
+    plan = make_plan(request([task(1, f"{day(0)}T23:59", 1)]))
+
+    assert plan.days[0].free_hours == 2
+    assert plan.days[0].blocks == []
+    assert assessed(plan)[1]["assessment"] == "shortfall"
+    assert assessed(plan)[1]["missing_hours"] == 1
+
+
 def test_least_slack_comes_first_not_the_earliest_due_date():
     # Short, due Monday: 3 free hours before it, needs 1, so slack 2.
     # Long, due Tuesday: 6 free hours before it, needs 5, so slack 1.
@@ -141,6 +164,24 @@ def test_tasks_the_plan_cannot_schedule_are_reported():
     # A task due on the horizon's last day + 1 is still planned.
     edge = make_plan(request([task(5, day(HORIZON_DAYS), 1)]))
     assert assessed(edge)[5]["assessment"] == "on_track"
+
+
+@pytest.mark.parametrize(
+    "unchecked",
+    [
+        pytest.param(task(2, day(4), None), id="no-estimate"),
+        pytest.param(task(2, day(-1), 3), id="overdue"),
+        pytest.param(task(2, day(HORIZON_DAYS + 1), 3), id="later"),
+    ],
+)
+def test_all_fit_is_false_when_a_task_was_not_checked(unchecked):
+    # The other task fits, and nothing has a shortfall, but the plan cannot
+    # claim that everything fits: it does not know about this task.
+    plan = make_plan(request([task(1, day(4), 1), unchecked]))
+
+    assert assessed(plan)[1]["assessment"] == "on_track"
+    assert assessed(plan)[2]["missing_hours"] == 0
+    assert not plan.all_fit
 
 
 def test_the_order_of_the_tasks_sent_does_not_change_the_plan():

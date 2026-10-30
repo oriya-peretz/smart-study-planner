@@ -74,7 +74,9 @@ class PlanTask(Request):
     title: str = Field(min_length=1, max_length=200)
     course: str = Field(min_length=1, max_length=100)
     type: TaskType
-    due_at: NaiveDatetime  # the user's local time, like the backend stores it
+    # The user's local time, like the backend stores it. Only the date is used:
+    # the due day is never planned, even for a task due at 23:59.
+    due_at: NaiveDatetime
     estimated_hours: float | None = Field(default=None, gt=0, le=1000)
 
 
@@ -93,7 +95,11 @@ class PlanRequest(Request):
 
 
 class Block(BaseModel):
-    """Time for one task on one day."""
+    """Hours allocated to one task on one day; not a study session.
+
+    A block has no start time, and no minimum length or break rules are checked,
+    so it may be as short as half an hour.
+    """
 
     task_id: int
     hours: float
@@ -132,6 +138,8 @@ class PlanResponse(BaseModel):
     start_date: date
     horizon_end: date  # the last day the plan looked at
     source: Literal["baseline"]  # step 2 adds plans proposed by the model
-    all_fit: bool  # no task has a shortfall
+    # True only if every task sent is on_track. A task the plan could not check
+    # (no estimate, overdue, later) makes it False: see `tasks` for the reason.
+    all_fit: bool
     days: list[DayPlan]  # the detailed days, from start_date
     tasks: list[TaskAssessment]  # by priority: least slack first
