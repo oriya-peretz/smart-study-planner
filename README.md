@@ -5,10 +5,11 @@ what is due, when, how long it will take, and where the work lives.
 Tasks can be viewed in one list by urgency, or grouped by course.
 A later version adds an AI assistant that suggests a study plan from the student's workload and deadlines.
 
-The repository holds two services:
+The repository holds three services:
 
 - `backend/`: a FastAPI service with SQLite storage (the API below)
 - `frontend/`: a Streamlit page in the browser that talks to the backend over HTTP
+- `ai-service/`: a FastAPI service that builds a study plan; it stores nothing (in progress, see [AI service](#ai-service))
 
 ## Quick start
 
@@ -206,6 +207,51 @@ What these tests do not cover: a real browser, and whether the real backend stil
 
 `127.0.0.1` rather than `localhost`: on Windows, `localhost` tries IPv6 first and adds about 2 seconds to every request.
 
+## AI service
+
+`ai-service/` turns a user's unfinished tasks and free hours into a study plan. It is a separate process on port 8001 and stores nothing: the caller sends everything the plan needs, and the backend will own the saved plan.
+This first version is deterministic (no model yet). A Pydantic AI agent will propose plans next, checked against the same rules, with this plan as the fallback.
+
+From `ai-service/`:
+
+```bash
+uv run fastapi dev --port 8001
+uv run pytest
+uv run ruff check .
+```
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | `{"status": "ok"}` |
+| POST | `/plan` | a 7-day plan and an assessment of each task |
+
+The request has a `start_date`, the user's `constraints` (`weekly_hours` from `sunday` to `saturday`, 0 to 16 in half hours, and `blocked_dates` with no study time) and the `tasks` (`id`, `title`, `course`, `type`, `due_at` in local time, optional `estimated_hours`). Unknown fields, duplicate task ids and times with a time zone are rejected with `422`.
+
+```bash
+curl -s localhost:8001/plan -H "content-type: application/json" -d '{
+  "start_date": "2026-11-01",
+  "constraints": {"weekly_hours": {"sunday": 2, "monday": 2, "tuesday": 2}},
+  "tasks": [{"id": 1, "title": "Sheet 3", "course": "Algorithms", "type": "homework",
+             "due_at": "2026-11-04T23:59", "estimated_hours": 3}]
+}'
+```
+
+The response lists 7 `days` (free hours, planned hours, and hours per task) and the `tasks` in priority order, each with its `assessment`: `on_track`, `shortfall` (with `missing_hours`), `no_estimate`, `overdue`, or `later` (due after the 8 weeks the plan looks at).
+
+`all_fit` is true only when every task sent is `on_track`. A task the plan could not check (`no_estimate`, `overdue`, `later`) makes it false, even with no shortfall, because the plan cannot claim that task fits; `tasks` gives the reason.
+
+Each entry in a day's `blocks` is **hours allocated to one task on that day, not a study session**: it has no start time, and no minimum length or break rules are checked, so a block can be as short as half an hour.
+
+**Rules the code enforces:**
+
+- A day's free hours come only from the constraints, and no day is planned beyond them.
+- A task is worked on only on days before its due date. Only the date counts: the due day is never planned, even for a task due at 23:59, so the plan aims to finish a day early and can report a shortfall for a task that could still be finished on the day itself.
+- Estimates are rounded up to half hours. They are estimates: the plan reports how much fits, not that the work will take exactly that long.
+- **Slack** is the free time before a task's due date minus the hours it needs. The next half hour always goes to the task with the least slack, so a long task due on Friday can come before a short one due on Thursday.
+- When not everything fits, the plan keeps the largest possible number of tasks on time (the Moore-Hodgson rule), gives the rest whatever time is left, and reports each one's missing hours. Nothing is hidden or silently dropped.
+
+`tests/test_planner.py` checks each rule, plus 300 random cases against a brute-force answer: no day is overbooked, nothing is planned on or after a due date, and the number of tasks on time is the best possible.
+
 ## Project layout
 
 ```
@@ -228,6 +274,12 @@ frontend/
   texts.py         every interface text in English and Hebrew, and the current language
   api.py           every HTTP call to the backend, with user-facing error messages
   .streamlit/config.toml  theme: white and gold, Jost font, round buttons, 20 px base size
+ai-service/
+  app/
+    main.py        /health and POST /plan
+    schemas.py     the request and response contract, with validation
+    planner.py     the deterministic plan: free hours, slack, shortfalls
+  tests/           pytest tests, including randomized checks of the rules
 ```
 
 ## AI-use note

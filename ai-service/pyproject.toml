@@ -1,0 +1,22 @@
+[project]
+name = "smart-study-planner-ai-service"
+version = "0.1.0"
+description = "Smart Study Planner - builds a study plan from tasks and free hours"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi[standard]>=0.162.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.3",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = ["error"]
+
+[tool.fastapi]
+entrypoint = "app.main:app"

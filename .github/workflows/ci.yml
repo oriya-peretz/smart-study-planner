@@ -1,6 +1,6 @@
 # Runs every service's checks on each pull request and on each push to main.
-# Based on the course's Lecture 10 workflow; the compose job and the
-# ai-service entry are added once those exist (EX3).
+# Based on the course's Lecture 10 workflow; the compose job is added once
+# docker-compose.yml exists (EX3).
 name: CI
 
 on:
@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false # show every failing service, not just the first
       matrix:
-        service: [backend, frontend]
+        service: [backend, frontend, ai-service]
     defaults:
       run:
         working-directory: ${{ matrix.service }}
@@ -60,7 +60,7 @@ jobs:
       - name: Known vulnerabilities in locked dependencies (OSV)
         run: |
           status=0
-          for service in backend frontend; do
+          for service in backend frontend ai-service; do
             (cd "$service" && uv audit --locked --preview-features audit-command) || status=1
           done
           exit "$status"

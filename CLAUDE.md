@@ -37,6 +37,9 @@ frontend/  Streamlit, port 8501
   dialogs.py        dialogs driven by session_state["dialog"] and on_dismiss
   labels.py, texts.py  task wording; every UI text in en and he; error translation
   api.py            the only HTTP client (httpx); every error carries a code
+ai-service/  FastAPI, port 8001, stores nothing (EX3)
+  app/schemas.py   POST /plan contract: start_date, constraints, tasks -> days, assessments
+  app/planner.py   deterministic baseline: half-hour units, Moore-Hodgson, least slack first
 .github/workflows/ci.yml  per service: uv sync --locked, ruff check, ruff format --check, pytest; advisory uv audit
 ```
 
@@ -48,6 +51,7 @@ frontend/  Streamlit, port 8501
 - Dates are stored as local naive time (`to_local_time`, with an optional `zone` for tests). Docker sets `TZ=Asia/Jerusalem`. The repeated autumn DST hour is a known, tested limit.
 - Passwords use salted scrypt; tokens are stored as sha256 hashes and expire after 14 days. The token lives in Streamlit `session_state`, so refreshing the page logs the user out (known limit; a cookie could fix it).
 - `User.language` is stored as plain text (`en` or `he`). An enum column stores member *names*, which broke a migrated database.
+- Plan (`ai-service`): the due day is never planned, whatever the time due. `all_fit` is true only if every task sent is `on_track`; a task with no estimate, overdue or later makes it false. A block is allocated hours, not a validated study session (no start time, length or break rules).
 - UI: white and gold theme in `frontend/.streamlit/config.toml` (Jost font, `baseFontSize = 20`, and Streamlit accepts only one font URL). In Hebrew: right-to-left marks around line separators; dates, times, toggles and switches stay left to right; the top bar keeps the same layout as English (the email and Log out on the left, the language on the right). The landing content is vertically centered (`st-key-landing-content`).
 
 ### EASS requirements
@@ -80,7 +84,7 @@ git fetch --all && git rev-parse --short origin/main personal/main   # both repo
 
 Progress at the time of writing (check against the repo):
 - EX1 and EX2 are done.
-- EX3 has not started: **wait for the user's go-ahead.**
+- EX3 is in progress, one step per PR (see the plan below). Check `ls ai-service` and the open PRs for how far it got.
 - The upstream PRs have not started.
 
 ## EX3 plan (agreed with the user)
