@@ -1,0 +1,514 @@
+{
+ "components": {
+  "schemas": {
+   "Assessment": {
+    "enum": [
+     "on_track",
+     "shortfall",
+     "no_estimate",
+     "overdue",
+     "later"
+    ],
+    "title": "Assessment",
+    "type": "string"
+   },
+   "Block": {
+    "description": "Hours allocated to one task on one day; not a study session.\n\nA block has no start time, and no minimum length or break rules are checked,\nso it may be as short as half an hour.",
+    "properties": {
+     "hours": {
+      "title": "Hours",
+      "type": "number"
+     },
+     "task_id": {
+      "title": "Task Id",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "task_id",
+     "hours"
+    ],
+    "title": "Block",
+    "type": "object"
+   },
+   "Constraints": {
+    "additionalProperties": false,
+    "description": "Hard limits from the user. The plan never goes beyond them.",
+    "properties": {
+     "blocked_dates": {
+      "items": {
+       "format": "date",
+       "type": "string"
+      },
+      "maxItems": 366,
+      "title": "Blocked Dates",
+      "type": "array"
+     },
+     "weekly_hours": {
+      "$ref": "#/components/schemas/WeeklyHours"
+     }
+    },
+    "required": [
+     "weekly_hours"
+    ],
+    "title": "Constraints",
+    "type": "object"
+   },
+   "DayPlan": {
+    "properties": {
+     "blocks": {
+      "items": {
+       "$ref": "#/components/schemas/Block"
+      },
+      "title": "Blocks",
+      "type": "array"
+     },
+     "date": {
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+     },
+     "free_hours": {
+      "title": "Free Hours",
+      "type": "number"
+     },
+     "planned_hours": {
+      "title": "Planned Hours",
+      "type": "number"
+     }
+    },
+    "required": [
+     "date",
+     "free_hours",
+     "planned_hours",
+     "blocks"
+    ],
+    "title": "DayPlan",
+    "type": "object"
+   },
+   "FallbackReason": {
+    "description": "Why the plan is the baseline although the model was asked.",
+    "enum": [
+     "budget_exceeded",
+     "invalid_output",
+     "provider_error",
+     "timeout"
+    ],
+    "title": "FallbackReason",
+    "type": "string"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "title": "Detail",
+      "type": "array"
+     }
+    },
+    "title": "HTTPValidationError",
+    "type": "object"
+   },
+   "PlanRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "constraints": {
+      "$ref": "#/components/schemas/Constraints"
+     },
+     "note": {
+      "default": "",
+      "maxLength": 500,
+      "title": "Note",
+      "type": "string"
+     },
+     "start_date": {
+      "format": "date",
+      "title": "Start Date",
+      "type": "string"
+     },
+     "tasks": {
+      "items": {
+       "$ref": "#/components/schemas/PlanTask"
+      },
+      "maxItems": 500,
+      "title": "Tasks",
+      "type": "array"
+     }
+    },
+    "required": [
+     "start_date",
+     "constraints",
+     "tasks"
+    ],
+    "title": "PlanRequest",
+    "type": "object"
+   },
+   "PlanResponse": {
+    "properties": {
+     "all_fit": {
+      "title": "All Fit",
+      "type": "boolean"
+     },
+     "days": {
+      "items": {
+       "$ref": "#/components/schemas/DayPlan"
+      },
+      "title": "Days",
+      "type": "array"
+     },
+     "fallback_reason": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/FallbackReason"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "horizon_end": {
+      "format": "date",
+      "title": "Horizon End",
+      "type": "string"
+     },
+     "source": {
+      "enum": [
+       "baseline",
+       "model"
+      ],
+      "title": "Source",
+      "type": "string"
+     },
+     "start_date": {
+      "format": "date",
+      "title": "Start Date",
+      "type": "string"
+     },
+     "tasks": {
+      "items": {
+       "$ref": "#/components/schemas/TaskAssessment"
+      },
+      "title": "Tasks",
+      "type": "array"
+     }
+    },
+    "required": [
+     "start_date",
+     "horizon_end",
+     "source",
+     "all_fit",
+     "days",
+     "tasks"
+    ],
+    "title": "PlanResponse",
+    "type": "object"
+   },
+   "PlanTask": {
+    "additionalProperties": false,
+    "description": "One unfinished task. An exam's estimated hours are preparation time.",
+    "properties": {
+     "course": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Course",
+      "type": "string"
+     },
+     "due_at": {
+      "format": "date-time",
+      "title": "Due At",
+      "type": "string"
+     },
+     "estimated_hours": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "maximum": 1000.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Estimated Hours"
+     },
+     "id": {
+      "minimum": 1.0,
+      "title": "Id",
+      "type": "integer"
+     },
+     "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+     },
+     "type": {
+      "$ref": "#/components/schemas/TaskType"
+     }
+    },
+    "required": [
+     "id",
+     "title",
+     "course",
+     "type",
+     "due_at"
+    ],
+    "title": "PlanTask",
+    "type": "object"
+   },
+   "TaskAssessment": {
+    "properties": {
+     "assessment": {
+      "$ref": "#/components/schemas/Assessment"
+     },
+     "free_hours_before_due": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Free Hours Before Due"
+     },
+     "missing_hours": {
+      "title": "Missing Hours",
+      "type": "number"
+     },
+     "needed_hours": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Needed Hours"
+     },
+     "planned_hours": {
+      "title": "Planned Hours",
+      "type": "number"
+     },
+     "planned_hours_this_week": {
+      "title": "Planned Hours This Week",
+      "type": "number"
+     },
+     "slack_hours": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Slack Hours"
+     },
+     "task_id": {
+      "title": "Task Id",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "task_id",
+     "assessment",
+     "needed_hours",
+     "free_hours_before_due",
+     "slack_hours",
+     "planned_hours",
+     "planned_hours_this_week",
+     "missing_hours"
+    ],
+    "title": "TaskAssessment",
+    "type": "object"
+   },
+   "TaskType": {
+    "description": "The backend's task types (its own copy: the services share no code).",
+    "enum": [
+     "exam",
+     "submission",
+     "online_quiz",
+     "homework",
+     "project"
+    ],
+    "title": "TaskType",
+    "type": "string"
+   },
+   "ValidationError": {
+    "properties": {
+     "ctx": {
+      "title": "Context",
+      "type": "object"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "title": "Location",
+      "type": "array"
+     },
+     "msg": {
+      "title": "Message",
+      "type": "string"
+     },
+     "type": {
+      "title": "Error Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError",
+    "type": "object"
+   },
+   "WeeklyHours": {
+    "additionalProperties": false,
+    "description": "How many hours the user can study on each day of the week.",
+    "properties": {
+     "friday": {
+      "default": 0,
+      "maximum": 16.0,
+      "minimum": 0.0,
+      "multipleOf": 0.5,
+      "title": "Friday",
+      "type": "number"
+     },
+     "monday": {
+      "default": 0,
+      "maximum": 16.0,
+      "minimum": 0.0,
+      "multipleOf": 0.5,
+      "title": "Monday",
+      "type": "number"
+     },
+     "saturday": {
+      "default": 0,
+      "maximum": 16.0,
+      "minimum": 0.0,
+      "multipleOf": 0.5,
+      "title": "Saturday",
+      "type": "number"
+     },
+     "sunday": {
+      "default": 0,
+      "maximum": 16.0,
+      "minimum": 0.0,
+      "multipleOf": 0.5,
+      "title": "Sunday",
+      "type": "number"
+     },
+     "thursday": {
+      "default": 0,
+      "maximum": 16.0,
+      "minimum": 0.0,
+      "multipleOf": 0.5,
+      "title": "Thursday",
+      "type": "number"
+     },
+     "tuesday": {
+      "default": 0,
+      "maximum": 16.0,
+      "minimum": 0.0,
+      "multipleOf": 0.5,
+      "title": "Tuesday",
+      "type": "number"
+     },
+     "wednesday": {
+      "default": 0,
+      "maximum": 16.0,
+      "minimum": 0.0,
+      "multipleOf": 0.5,
+      "title": "Wednesday",
+      "type": "number"
+     }
+    },
+    "title": "WeeklyHours",
+    "type": "object"
+   }
+  }
+ },
+ "info": {
+  "title": "Smart Study Planner AI service",
+  "version": "0.1.0"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/health": {
+   "get": {
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": {
+          "type": "string"
+         },
+         "title": "Response Health Health Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Health"
+   }
+  },
+  "/plan": {
+   "post": {
+    "description": "The model's week if it keeps every rule, otherwise the baseline plan.",
+    "operationId": "plan_plan_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PlanRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PlanResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Plan"
+   }
+  }
+ }
+}

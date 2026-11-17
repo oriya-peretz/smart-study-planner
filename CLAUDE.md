@@ -29,6 +29,10 @@ backend/   FastAPI + SQLModel + SQLite, port 8000
   app/models.py    User, AuthToken, Course, Task, and request/response models
   app/db.py        engine, get_session, ADDED_COLUMNS (adds new columns at startup)
   app/ordering.py  urgency order and by-course grouping
+  app/queries.py   a user's courses and tasks (shared by task and plan routes)
+  app/planning.py  /constraints (GET, PUT), /plan (POST builds via the AI service, GET reads + outdated)
+  app/ai_contract.py, ai_client.py  backend copy of the AI contract + answer checks; httpx client, retries
+  tests/ai_openapi.json  AI service schema snapshot for test_contract.py (regenerate after contract changes)
   scripts/demo_data.py  creates a demo account with sample data (idempotent)
 frontend/  Streamlit, port 8501
   streamlit_app.py  landing or app screen, theme CSS, right-to-left in Hebrew
@@ -53,6 +57,7 @@ ai-service/  FastAPI, port 8001, stores nothing (EX3)
 - Passwords use salted scrypt; tokens are stored as sha256 hashes and expire after 14 days. The token lives in Streamlit `session_state`, so refreshing the page logs the user out (known limit; a cookie could fix it).
 - `User.language` is stored as plain text (`en` or `he`). An enum column stores member *names*, which broke a migrated database.
 - Plan (`ai-service`): the due day is never planned, whatever the time due. `all_fit` is true only if every task sent is `on_track`; a task with no estimate, overdue or later makes it false. A block is allocated hours, not a validated study session (no start time, length or break rules).
+- Backend plan flow: `POST /plan` sends unfinished tasks + constraints to the AI service, checks the answer itself, then saves it (one plan per user); a failure keeps the old plan. 503 = unavailable (retried 3x for connect/timeout/503/504 only), 502 = invalid output. `GET /plan` never calls the AI; `outdated` when inputs changed or the first day passed.
 - The model may only rearrange the first week; weeks 2 to 8 are always code. Any model failure returns the baseline with `fallback_reason`, never an error. Logs hold no user text.
 - UI: white and gold theme in `frontend/.streamlit/config.toml` (Jost font, `baseFontSize = 20`, and Streamlit accepts only one font URL). In Hebrew: right-to-left marks around line separators; dates, times, toggles and switches stay left to right; the top bar keeps the same layout as English (the email and Log out on the left, the language on the right). The landing content is vertically centered (`st-key-landing-content`).
 
