@@ -203,7 +203,33 @@ uv run ruff check .
 `tests/test_app.py` runs the page with Streamlit's `AppTest` (no browser) and fakes the backend with `respx`, so each state can be produced on demand: the landing screen, log in and sign up (including a wrong password and a validation error), both views and the empty state, the backend being down, an expired session, a write whose reply was lost, and the exact JSON the forms send with the user's token.
 `tests/test_boundary.py` checks that only `api.py` talks HTTP.
 
-What these tests do not cover: a real browser, and whether the real backend still answers in the shapes the fakes use. The backend's tests cover the backend's side of that contract.
+#### End-to-end test in a real browser
+
+`e2e/test_e2e.py` replays the product's main promise with Playwright, against the real frontend, backend and database: after a user adds a task to a course, it appears; after they log out and back in, it is still there, so it came from the backend; after they delete it, it is gone. Each run signs up a new throwaway account (`e2e-<random>@example.com`).
+
+Start the backend and the frontend as above, then from `frontend/`:
+
+```bash
+uv run pytest e2e --base-url http://127.0.0.1:8501 --browser-channel chrome
+```
+
+`--browser-channel chrome` uses an installed Google Chrome. Without Chrome, download Playwright's own browser once with `uv run playwright install chromium` and drop the flag. Plain `uv run pytest` does not run this test, because it needs the running stack; CI does not run it yet.
+
+What these tests do not cover: every screen in a real browser (the e2e test follows one flow), and whether the real backend still answers in the shapes the AppTest fakes use. The backend's tests cover the backend's side of that contract.
+
+#### Manual checks
+
+Checked by hand in a browser against the running stack:
+
+| Action | What the user sees |
+|---|---|
+| Stop the backend, then click anything | `Cannot reach the backend at http://127.0.0.1:8000. Start it (uv run fastapi dev in backend/), then try again.` No traceback; after the backend starts again, the next click loads the data and the user stays logged in |
+| Sign up with `not-an-email` and a 5-character password | `Please fix: email: value is not a valid email address: ...; password: String should have at least 8 characters` |
+| Add a task with an empty title | The Title field is marked as required, and nothing is sent |
+| Log in with a wrong password | `Wrong email or password` |
+| A second account | Sees none of the first account's courses or tasks; the API answers `404` for them |
+
+Reloading the page logs the user out, because the login token lives in the browser tab's Streamlit session. Error messages therefore say "try again", not "reload".
 
 `127.0.0.1` rather than `localhost`: on Windows, `localhost` tries IPv6 first and adds about 2 seconds to every request.
 

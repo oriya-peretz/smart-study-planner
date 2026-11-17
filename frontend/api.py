@@ -79,7 +79,7 @@ def _failure(response: httpx.Response) -> tuple[str, str, dict]:
                 {"problems": problems},
             )
         case 404:
-            return "That item no longer exists. Reload the page.", "not_found", {}
+            return "That item no longer exists.", "not_found", {}
         case 401 | 409:  # not logged in, or a conflict; the backend says which
             detail = response.json()["detail"]
             return detail, "backend_says", {"detail": detail}
@@ -98,18 +98,18 @@ def _request(method: str, path: str, **kwargs) -> httpx.Response:
     except NOT_SENT as exc:
         raise BackendUnavailable(
             f"Cannot reach the backend at {BACKEND_URL}. "
-            "Start it (uv run fastapi dev in backend/) and reload the page.",
+            "Start it (uv run fastapi dev in backend/), then try again.",
             "unavailable",
         ) from exc
     except httpx.TransportError as exc:  # sent, but no complete reply
         if method == "GET":
             raise BackendNoAnswer(
-                "The backend took too long to answer. Reload the page to try again.",
+                "The backend took too long to answer. Try again.",
                 "no_answer_read",
             ) from exc
         raise BackendNoAnswer(
             "The backend did not answer in time. Your change may have been saved. "
-            "Reload the page and check before trying again.",
+            "Check your tasks before trying again.",
             "no_answer_write",
         ) from exc
     if response.status_code == 401:
