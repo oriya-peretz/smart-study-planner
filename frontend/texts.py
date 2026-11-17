@@ -142,19 +142,19 @@ TEXTS: dict[str, dict[str, str]] = {
     # ---- Errors (shown in Hebrew; in English api.py's own message is shown) ----
     "err_unavailable": {
         "en": "Cannot reach the server.",
-        "he": "אין חיבור לשרת. יש לוודא שהוא פועל ולרענן את הדף.",
+        "he": "אין חיבור לשרת. יש לוודא שהוא פועל ולנסות שוב.",
     },
     "err_no_answer_read": {
         "en": "The server took too long to answer.",
-        "he": "השרת לא ענה בזמן. כדאי לרענן את הדף ולנסות שוב.",
+        "he": "השרת לא ענה בזמן. כדאי לנסות שוב.",
     },
     "err_no_answer_write": {
         "en": "The server did not answer in time.",
-        "he": "השרת לא ענה בזמן. ייתכן שהשינוי נשמר: כדאי לרענן את הדף ולבדוק לפני שמנסים שוב.",
+        "he": "השרת לא ענה בזמן. ייתכן שהשינוי נשמר: כדאי לבדוק את המשימות לפני שמנסים שוב.",
     },
     "err_not_found": {
         "en": "That item no longer exists.",
-        "he": "הפריט הזה כבר לא קיים. כדאי לרענן את הדף.",
+        "he": "הפריט הזה כבר לא קיים.",
     },
     "err_server_error": {
         "en": "The server failed ({status}).",
