@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 database.db
+.env
 # Personal notes (not part of the project)
 notes/
 data/

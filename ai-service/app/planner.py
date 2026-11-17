@@ -12,24 +12,30 @@ Hours are counted in half-hour units internally, so sums are exact integers.
    tasks that fit before those that do not. Slack is the free time left before
    the due date minus the work left, so a long task due later can come before
    a short one due sooner.
+
+The model may rearrange the first week (see app/agent.py). proposal_problems
+decides whether a proposal is accepted; make_plan then plans the rest of the
+horizon from it, with the same rules.
 """
 
 import math
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from app.schemas import (
+    DETAIL_DAYS,
     Assessment,
     Block,
     DayPlan,
     PlanRequest,
     PlanResponse,
     PlanTask,
+    ProposedWeek,
     TaskAssessment,
 )
 
 HORIZON_DAYS = 56  # look 8 weeks ahead
-DETAIL_DAYS = 7  # return the first week day by day
 
 
 def to_units(hours: float) -> int:
@@ -73,7 +79,8 @@ def fitting_ids(candidates: list[Candidate], before: list[int]) -> set[int]:
     return {c.task.id for c in kept}
 
 
-def make_plan(request: PlanRequest) -> PlanResponse:
+def make_plan(request: PlanRequest, week: ProposedWeek | None = None) -> PlanResponse:
+    """The baseline plan, or, given an accepted `week`, the plan built on it."""
     start = request.start_date
     days = [start + timedelta(days=i) for i in range(HORIZON_DAYS)]
     blocked = set(request.constraints.blocked_dates)
@@ -101,7 +108,14 @@ def make_plan(request: PlanRequest) -> PlanResponse:
     left = {c.task.id: c.need for c in candidates}
     planned = [dict[int, int]() for _ in days]  # day -> task id -> units
 
-    for day in range(HORIZON_DAYS):
+    if week is not None:
+        for proposed in week.days:
+            index = (proposed.date - start).days
+            for block in proposed.blocks:
+                planned[index][block.task_id] = to_units(block.hours)
+                left[block.task_id] -= to_units(block.hours)
+
+    for day in range(0 if week is None else DETAIL_DAYS, HORIZON_DAYS):
         used = 0
         while used < free[day]:
             open_now = [c for c in candidates if left[c.task.id] and day < c.deadline]
@@ -188,8 +202,77 @@ def make_plan(request: PlanRequest) -> PlanResponse:
     return PlanResponse(
         start_date=start,
         horizon_end=days[-1],
-        source="baseline",
+        source="baseline" if week is None else "model",
         all_fit=all(r.assessment == Assessment.ON_TRACK for r in results),
         days=detail,
         tasks=results,
     )
+
+
+def proposal_problems(
+    request: PlanRequest, baseline: PlanResponse, week: ProposedWeek
+) -> list[str]:
+    """Every rule the model's week breaks; an empty list means it is accepted.
+
+    The model may rearrange the week. It may not change what the plan promises.
+    """
+    plannable = (Assessment.ON_TRACK, Assessment.SHORTFALL)
+    need = {
+        t.task_id: to_units(t.needed_hours)
+        for t in baseline.tasks
+        if t.assessment in plannable
+    }
+    due = {task.id: task.due_at.date() for task in request.tasks}
+    free = {day.date: to_units(day.free_hours) for day in baseline.days}
+
+    problems = []
+    seen_days = set()
+    planned = Counter()
+    for day in week.days:
+        if day.date not in free:
+            problems.append(f"{day.date} is not a day of this week")
+            continue
+        if day.date in seen_days:
+            problems.append(f"{day.date} is listed twice")
+            continue
+        seen_days.add(day.date)
+        seen_tasks = set()
+        used = 0
+        for block in day.blocks:
+            task = block.task_id
+            if task not in need:
+                problems.append(f"task {task} cannot be planned")
+                continue
+            if task in seen_tasks:
+                problems.append(f"task {task} is listed twice on {day.date}")
+            seen_tasks.add(task)
+            if day.date >= due[task]:
+                problems.append(f"task {task} is due on {due[task]}: plan it earlier")
+            units = to_units(block.hours)
+            used += units
+            planned[task] += units
+        if used > free[day.date]:
+            problems.append(
+                f"{day.date} has {to_hours(used)} h planned "
+                f"but only {to_hours(free[day.date])} h free"
+            )
+    problems += [
+        f"task {task} gets {to_hours(units)} h but needs {to_hours(need[task])} h"
+        for task, units in planned.items()
+        if units > need[task]
+    ]
+    if problems:
+        return problems  # the checks below assume a well-formed week
+
+    baseline_hours = sum(day.planned_hours for day in baseline.days)
+    if to_hours(sum(planned.values())) < baseline_hours:
+        problems.append(f"plan at least {baseline_hours} h this week")
+    result = make_plan(request, week)
+    assessed = {t.task_id: t.assessment for t in result.tasks}
+    problems += [
+        f"task {t.task_id} would miss its due date: give it more time this week"
+        for t in baseline.tasks
+        if t.assessment == Assessment.ON_TRACK
+        and assessed[t.task_id] != Assessment.ON_TRACK
+    ]
+    return problems

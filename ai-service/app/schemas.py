@@ -19,6 +19,8 @@ from pydantic import (
 # Free hours in one day, in steps of half an hour (the plan's smallest block).
 DayHours = Annotated[float, Field(ge=0, le=16, multiple_of=0.5)]
 
+DETAIL_DAYS = 7  # the plan shows the first week day by day
+
 # In date.weekday() order: Monday is 0, Sunday is 6.
 WEEKDAYS = (
     "monday",
@@ -84,6 +86,8 @@ class PlanRequest(Request):
     start_date: date  # the plan's first day
     constraints: Constraints
     tasks: list[PlanTask] = Field(max_length=500)
+    # Guides the model's arrangement of the week. It cannot change the constraints.
+    note: str = Field(default="", max_length=500)
 
     @field_validator("tasks")
     @classmethod
@@ -105,11 +109,42 @@ class Block(BaseModel):
     hours: float
 
 
+class ProposedBlock(BaseModel):
+    """Hours for one task on one day."""
+
+    task_id: int = Field(description="A task_id from week_overview")
+    hours: float = Field(gt=0, le=16, multiple_of=0.5, description="In half hours")
+
+
+class ProposedDay(BaseModel):
+    """One day of the week and the hours planned on it."""
+
+    date: Annotated[date, Field(description="A date from week_overview")]
+    blocks: list[ProposedBlock]
+
+
+class ProposedWeek(BaseModel):
+    """How to arrange the week's study hours."""
+
+    # The docstrings above are sent to the model. There is no free-text field on
+    # purpose, so the model cannot invent chapters or topics.
+    days: list[ProposedDay] = Field(max_length=DETAIL_DAYS)
+
+
 class DayPlan(BaseModel):
     date: date
     free_hours: float
     planned_hours: float  # never more than free_hours
     blocks: list[Block]
+
+
+class FallbackReason(StrEnum):
+    """Why the plan is the baseline although the model was asked."""
+
+    BUDGET_EXCEEDED = "budget_exceeded"
+    INVALID_OUTPUT = "invalid_output"  # still breaking the rules after the retries
+    PROVIDER_ERROR = "provider_error"
+    TIMEOUT = "timeout"
 
 
 class Assessment(StrEnum):
@@ -137,7 +172,8 @@ class TaskAssessment(BaseModel):
 class PlanResponse(BaseModel):
     start_date: date
     horizon_end: date  # the last day the plan looked at
-    source: Literal["baseline"]  # step 2 adds plans proposed by the model
+    source: Literal["baseline", "model"]
+    fallback_reason: FallbackReason | None = None
     # True only if every task sent is on_track. A task the plan could not check
     # (no estimate, overdue, later) makes it False: see `tasks` for the reason.
     all_fit: bool
