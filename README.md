@@ -9,7 +9,7 @@ The repository holds three services:
 
 - `backend/`: a FastAPI service with SQLite storage (the API below)
 - `frontend/`: a Streamlit page in the browser that talks to the backend over HTTP
-- `ai-service/`: a FastAPI service with a Pydantic AI agent that builds a study plan; it stores nothing (in progress, see [AI service](#ai-service))
+- `ai-service/`: a FastAPI service with a Pydantic AI agent that builds a study plan; it stores nothing, and only the backend calls it (in progress, see [AI service](#ai-service))
 
 ## Quick start
 
@@ -92,13 +92,60 @@ Sending a field that does not fit the task's type returns `422`.
 | `GET /tasks/{id}` | one task | 200 | 404 |
 | `PATCH /tasks/{id}` | change only the fields sent; `null` clears an optional field | 200 | 404, 422 |
 | `DELETE /tasks/{id}` | delete a task | 204 | 404 |
+| `GET /constraints` | the user's free hours per weekday, blocked dates and note; `saved: false` before the first save | 200 | |
+| `PUT /constraints` | replace them | 200 | 422 |
+| `POST /plan` | build a new study plan now, through the AI service, and save it | 200 | 409 no constraints yet, 502, 503 |
+| `GET /plan` | the saved plan, with `outdated` | 200 | 404 no plan yet |
 
-All course and task routes need a token and answer `401` without one.
+All course, task, constraint and plan routes need a token and answer `401` without one.
 
 **Urgency:** open tasks first, nearest `due_at` first (an overdue open task comes first); done tasks and past exams last.
 Both list views accept `?include_done=false` to hide done tasks and past exams.
 
 Interactive documentation is served at `/docs` while the server runs.
+
+### The study plan
+
+```text
+browser -> frontend -> backend  --POST /plan-->  ai-service
+                         |  (checks the answer, then saves it)
+                         v
+                       SQLite (only the backend reads and writes it)
+```
+
+**Constraints** are the user's hard limits: free hours for each day of the week (0 to 16, in half hours), dates with no study time, and an optional note (up to 500 characters, such as "keep Thursday light") that guides the model but cannot change the limits.
+
+**`POST /plan`** reads the user's unfinished tasks (done tasks and past exams are left out) and constraints, sends them to the AI service with today as the first day, and saves the answer as the user's one current plan. It runs only when the user asks. **`GET /plan`** never calls the AI service; its `outdated` is `true` once a task, the constraints or the note changed since the plan was made, or once the plan's first day has passed. Each block and task in the answer carries the title and course it had when the plan was made.
+
+**The backend checks the AI answer itself before saving it**, because only the backend writes data. The answer must match the backend's own copy of the contract (`app/ai_contract.py`), and then:
+
+- start on the day that was sent and list exactly the seven days from it;
+- give each day the user's own free hours (none on a blocked date), and plan no more than that;
+- have blocks that add up to the planned hours, each with hours, each for a task that was sent, and each before that task's due day;
+- assess every task that was sent exactly once.
+
+**Errors:**
+
+| What happened | `POST /plan` answers | Retried? | The saved plan |
+|---|---|---|---|
+| No constraints saved yet | `409 {"detail": "Set your free study hours first."}`, with no AI call | | unchanged |
+| AI service refused the connection, timed out, or answered `503`/`504` | `503 {"detail": "AI service unavailable"}` | yes: 3 attempts in all, 0.5 s and 1 s apart | unchanged |
+| AI service answered `500` | `503 {"detail": "AI service unavailable"}` | no | unchanged |
+| AI service answered `4xx`, a broken body, or a plan that fails a check above | `502 {"detail": "AI service returned invalid output"}` | no: the same request gets the same answer | unchanged |
+| The model failed inside the AI service | `200` with the baseline plan, `source: "baseline"` and a `fallback_reason` | inside the AI service | replaced |
+
+Retries happen in one layer only, the backend's AI client. Repeating `POST /plan` to the AI service is safe, since it stores nothing and the backend saves only the answer it accepts; each attempt may still cost model work. The call has a timeout per phase (connect 2 s, read 30 s, write 5 s, pool 2 s), and the AI service stops its model after 25 s, so it answers within the read timeout. No database write is open while the backend waits.
+
+Observed on Windows, with the AI service stopped: `POST /plan` answered `503` after about 8 seconds. On Windows a connection to a closed local port waits for the 2-second connect timeout instead of failing at once, so three attempts and the 1.5 seconds between them add up. Ordinary task and course routes kept working.
+
+**The contract:** `tests/test_contract.py` compares the backend's copy of the contract with `tests/ai_openapi.json`, a snapshot of the schema the AI service publishes. Everything the backend sends must be accepted exactly, and everything it reads must exist with the same type and limits. After changing the AI service's contract, regenerate the snapshot from the repository root, then run the backend tests:
+
+```bash
+cd ai-service
+uv run python -c "import json; from app.main import app; print(json.dumps(app.openapi(), indent=1, sort_keys=True))" > ../backend/tests/ai_openapi.json
+```
+
+`tests/test_plan.py` fakes the AI service with `httpx.MockTransport`, so the backend tests need no network and no AI service.
 
 ## Backend
 
@@ -121,6 +168,7 @@ Open http://localhost:8000/docs. Data is stored in `backend/data/app.db`, which 
 | Variable | Default | Purpose |
 |---|---|---|
 | `DATABASE_URL` | `sqlite:///./data/app.db` | where the SQLite database lives |
+| `AI_SERVICE_URL` | `http://127.0.0.1:8001` | where the backend sends `POST /plan` |
 
 See `.env.example`.
 
@@ -235,7 +283,7 @@ Reloading the page logs the user out, because the login token lives in the brows
 
 ## AI service
 
-`ai-service/` turns a user's unfinished tasks and free hours into a study plan. It is a separate process on port 8001 and stores nothing: the caller sends everything the plan needs, and the backend will own the saved plan.
+`ai-service/` turns a user's unfinished tasks and free hours into a study plan. It is a separate process on port 8001 and stores nothing: the backend sends everything the plan needs and owns the saved plan (see [The study plan](#the-study-plan)).
 Code builds a deterministic baseline plan first. A Pydantic AI agent may then rearrange the first week; code checks its proposal, and the baseline is the fallback.
 
 From `ai-service/`:
@@ -318,7 +366,11 @@ backend/
     models.py      task table and request/response models with validation
     db.py          database engine and per-request session
     ordering.py    the urgency and by-course views
-  tests/           pytest tests
+    queries.py     a user's courses and tasks, for the task routes and the plan
+    planning.py    constraints and plan routes; what is sent and when a plan is outdated
+    ai_contract.py the backend's copy of the AI service contract, and its checks on answers
+    ai_client.py   the only HTTP client for the AI service: timeouts, errors, retries
+  tests/           pytest tests; ai_openapi.json is the AI service's published schema
   scripts/demo_data.py  creates a demo account with sample data
   Dockerfile
 frontend/

@@ -9,6 +9,7 @@ from pydantic import (
     NaiveDatetime,
     model_validator,
 )
+from sqlalchemy import JSON, Column
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -209,3 +210,34 @@ class CourseTasks(SQLModel):
 
     course: CoursePublic
     tasks: list[TaskPublic]
+
+
+# ---- Study plan (EX3); request and response models are in app/planning.py ----
+
+
+class StudyConstraints(SQLModel, table=True):
+    """A user's limits for the study plan: free hours per weekday, blocked dates."""
+
+    user_id: int = Field(foreign_key="user.id", primary_key=True)
+    sunday: float = 0
+    monday: float = 0
+    tuesday: float = 0
+    wednesday: float = 0
+    thursday: float = 0
+    friday: float = 0
+    saturday: float = 0
+    # ISO dates ("2026-12-24") with no study time at all.
+    blocked_dates: list[str] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    note: str = ""  # a preference for the model; it cannot change the limits
+
+
+class StudyPlan(SQLModel, table=True):
+    """A user's latest plan: exactly what was sent to the AI service, and its
+    checked answer. Keeping the request shows later whether the plan is outdated."""
+
+    user_id: int = Field(foreign_key="user.id", primary_key=True)
+    created_at: NaiveDatetime
+    request: dict = Field(sa_column=Column(JSON, nullable=False))
+    answer: dict = Field(sa_column=Column(JSON, nullable=False))

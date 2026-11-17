@@ -5,10 +5,9 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlmodel import Session, func, select
 
-from app import auth, db
+from app import auth, db, planning
 from app.auth import CurrentUser
 from app.models import (
-    FINISHED_STATUSES,
     Course,
     CourseCreate,
     CoursePublic,
@@ -21,6 +20,7 @@ from app.models import (
     User,
 )
 from app.ordering import by_course, by_urgency
+from app.queries import public, user_courses, user_tasks
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Smart Study Planner", lifespan=lifespan)
 app.include_router(auth.router)
+app.include_router(planning.router)
 
 
 def save(session: Session, row: Course | Task):
@@ -85,22 +86,6 @@ def check_name_is_free(
             status.HTTP_409_CONFLICT,
             detail=f"A course named {other.name!r} already exists",
         )
-
-
-def public(task: Task) -> TaskPublic:
-    return TaskPublic.model_validate(task)
-
-
-def user_courses(session: Session, user: User) -> list[Course]:
-    return list(session.exec(select(Course).where(Course.user_id == user.id)))
-
-
-def user_tasks(session: Session, user: User, include_done: bool) -> list[TaskPublic]:
-    query = select(Task).join(Course).where(Course.user_id == user.id)
-    tasks = [public(task) for task in session.exec(query)]
-    if not include_done:
-        tasks = [task for task in tasks if task.status not in FINISHED_STATUSES]
-    return tasks
 
 
 @app.get("/health")
