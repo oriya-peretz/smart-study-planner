@@ -8,6 +8,7 @@ import streamlit as st
 import account
 import api
 import dialogs
+import plan_view
 import views
 from texts import error_message, is_rtl, t
 
@@ -63,7 +64,7 @@ if is_rtl():
           /* The two switches lay out left to right, so their rounded ends stay on the
              outside; the views are listed in reverse below, so "By course" stays first
              when read from the right. */
-          .st-key-lang-picker, .st-key-view { direction: ltr; }
+          .st-key-lang-picker, .st-key-view, .st-key-page { direction: ltr; }
           /* A toggle's knob slides to the right when on; right to left it would
              slide out of its track, leaving only a gold bar. The label stays Hebrew. */
           [data-testid="stCheckbox"] label > div:not([data-testid="stWidgetLabel"]) {
@@ -153,10 +154,25 @@ st.html(
     """
 )
 
+PAGES = {"tasks": "page_tasks", "plan": "page_plan"}
 VIEWS = {"course": "view_course", "urgency": "view_urgency"}
+
+page = st.segmented_control(
+    t("page"),
+    list(reversed(PAGES)) if is_rtl() else list(PAGES),
+    default="tasks",
+    format_func=lambda code: t(PAGES[code]),
+    key="page",
+    label_visibility="collapsed",
+)
+page = page or "tasks"  # clicking the selected option again clears it
 
 if notice := st.session_state.pop("notice", None):
     st.success(notice)
+
+if page == "plan":
+    plan_view.plan_page()
+    st.stop()
 
 view_col, toggle_col, add_col = st.columns([2.2, 1.6, 1.2], vertical_alignment="center")
 view = view_col.segmented_control(

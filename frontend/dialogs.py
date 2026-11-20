@@ -258,8 +258,8 @@ def edit_course(course: api.Course, has_tasks: bool) -> None:
             notify(t("course_deleted", name=plain(course["name"])))
 
 
-def _dialog(title_key: str, body, *args, width: str = "small") -> None:
-    """Open `body` as a dialog titled in the current language."""
+def open_as(title_key: str, body, *args, width: str = "small") -> None:
+    """Draw `body` as a dialog titled in the current language."""
     st.dialog(t(title_key), width=width, on_dismiss=close_dialog)(body)(*args)
 
 
@@ -270,7 +270,7 @@ def show_open(courses: list[api.Course], tasks: list[api.Task]) -> None:
         return
     match dialog["name"]:
         case "add-task":
-            _dialog(
+            open_as(
                 "dlg_add_task",
                 add_task,
                 courses,
@@ -278,7 +278,7 @@ def show_open(courses: list[api.Course], tasks: list[api.Task]) -> None:
                 width="medium",
             )
         case "add-course":
-            _dialog("dlg_new_course", add_course)
+            open_as("dlg_new_course", add_course)
         case "edit-task":
             task = next(
                 (item for item in tasks if item["id"] == dialog["task_id"]), None
@@ -286,11 +286,11 @@ def show_open(courses: list[api.Course], tasks: list[api.Task]) -> None:
             if task is None:  # e.g. hidden by "Show finished"
                 close_dialog()
             else:
-                _dialog("dlg_edit_task", edit_task, task, courses, width="medium")
+                open_as("dlg_edit_task", edit_task, task, courses, width="medium")
         case "edit-course":
             course = next((c for c in courses if c["id"] == dialog["course_id"]), None)
             if course is None:
                 close_dialog()
             else:
                 has_tasks = any(item["course_id"] == course["id"] for item in tasks)
-                _dialog("dlg_edit_course", edit_course, course, has_tasks)
+                open_as("dlg_edit_course", edit_course, course, has_tasks)

@@ -8,6 +8,10 @@ import httpx
 # 127.0.0.1, not localhost: on Windows, localhost tries IPv6 first and waits ~2 s per request.
 BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
 TIMEOUT = httpx.Timeout(10.0, connect=2.0)
+# Building a plan waits for the AI service. The backend tries it up to 3 times,
+# 30 s each, so the browser waits longer: the backend, not this page, should be
+# the one to report a slow AI service.
+PLAN_TIMEOUT = httpx.Timeout(100.0, connect=2.0)
 NOT_SENT = (httpx.ConnectError, httpx.ConnectTimeout, httpx.UnsupportedProtocol)
 
 
@@ -37,6 +41,28 @@ class Task(TypedDict):
 class CourseTasks(TypedDict):
     course: Course
     tasks: list[Task]
+
+
+class Constraints(TypedDict):
+    """A user's limits for the study plan (ConstraintsPublic)."""
+
+    weekly_hours: dict[str, float]  # "sunday" .. "saturday"
+    blocked_dates: list[str]  # ISO dates
+    note: str
+    saved: bool  # False until the user saves them once
+
+
+class Plan(TypedDict):
+    """The saved study plan (PlanPublic); see the backend's README section."""
+
+    created_at: str
+    start_date: str
+    source: str  # "model" or "baseline"
+    fallback_reason: str | None
+    all_fit: bool
+    outdated: bool
+    days: list[dict]
+    tasks: list[dict]
 
 
 class BackendError(Exception):
@@ -80,6 +106,25 @@ def _failure(response: httpx.Response) -> tuple[str, str, dict]:
             )
         case 404:
             return "That item no longer exists.", "not_found", {}
+        # The plan route's two AI failures; the saved plan stays as it was.
+        case 503 if _detail(response) == "AI service unavailable":
+            return (
+                (
+                    "The planning service is not available right now. "
+                    "Your saved plan is unchanged; try again in a minute."
+                ),
+                "ai_unavailable",
+                {},
+            )
+        case 502 if _detail(response) == "AI service returned invalid output":
+            return (
+                (
+                    "The planning service gave an answer that could not be used. "
+                    "Your saved plan is unchanged."
+                ),
+                "ai_bad_output",
+                {},
+            )
         case 401 | 409:  # not logged in, or a conflict; the backend says which
             detail = response.json()["detail"]
             return detail, "backend_says", {"detail": detail}
@@ -89,6 +134,14 @@ def _failure(response: httpx.Response) -> tuple[str, str, dict]:
                 "server_error",
                 {"status": code},  # not "code": that name is the error's own code
             )
+
+
+def _detail(response: httpx.Response) -> object:
+    """The "detail" of an error answer, or None if it has none."""
+    try:
+        return response.json().get("detail")
+    except ValueError, AttributeError:
+        return None
 
 
 def _request(method: str, path: str, **kwargs) -> httpx.Response:
@@ -202,3 +255,22 @@ class Backend:
 
     def delete_task(self, task_id: int) -> None:
         self._call("DELETE", f"/tasks/{task_id}")
+
+    def get_constraints(self) -> Constraints:
+        return _json(self._call("GET", "/constraints"))
+
+    def save_constraints(self, constraints: dict) -> Constraints:
+        return _json(self._call("PUT", "/constraints", json=constraints))
+
+    def get_plan(self) -> Plan | None:
+        """The saved plan, or None before the first one."""
+        try:
+            return _json(self._call("GET", "/plan"))
+        except BackendError as exc:
+            if exc.code == "not_found":
+                return None
+            raise
+
+    def build_plan(self) -> Plan:
+        """Ask for a new plan now. It can take a while: the AI service is involved."""
+        return _json(self._call("POST", "/plan", timeout=PLAN_TIMEOUT))
