@@ -91,7 +91,7 @@ git fetch --all && git rev-parse origin/main personal/main   # both repos in syn
 
 Progress at the time of writing (check against the repo):
 - EX1 and EX2 are done.
-- EX3 is in progress, one step per PR (see the plan below). Check `ls ai-service` and the open PRs for how far it got.
+- EX3 is in progress, one step per PR (see the plan below). Steps 1-3 are merged; check the open PRs for later steps.
 - The upstream PRs have not started.
 
 ## EX3 plan (agreed with the user)
@@ -102,8 +102,10 @@ One Issue and PR per step:
 3. Backend: a constraints table, `POST /plan` (calls the AI service, saves the plan) and `GET /plan`; a calm message when the AI service is down.
 4. Frontend: a "My plan" screen and a constraints screen.
 5. Docker Compose with all three services, demo data at startup, a compose job in CI.
-6. An AI evaluation dataset (10–15 scenarios) with results.
-7. A runbook and a demo.
+6. Product analytics with PostHog (lecturer's announcement, Nov 2026): anonymous events only (signed up, task added, plan built, ...), never emails, titles or the note; the key comes from `.env`, and with no key nothing is sent, so tests and CI make no network calls. The user creates the PostHog account.
+7. An AI evaluation dataset (10–15 scenarios) with results.
+8. Free public deployment (lecturer's announcement, Nov 2026). Choose the platform only when this step starts, after checking each provider's current pricing page: free tiers change often. Needs: all three services, data that survives restarts, secrets outside Git, and the AI service reachable only by the backend. Options found in Nov 2026: a free VM running the Compose stack (Oracle Cloud Always Free), or free container hosting that sleeps when idle plus a free managed Postgres (Render + Neon), which means moving from SQLite to Postgres. The user creates the accounts.
+9. A runbook, the release tags (`v1.0.0-rc.1`, then `v1.0.0` on a green commit), the live demo, and the required English-narrated product video (about 5 minutes, the user's own voice, linked from the README and the submission).
 
 Planner rules from the user:
 - Produce feasible and best-effort plans, and report shortfalls honestly. Estimated hours are estimates, not guarantees.
