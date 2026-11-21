@@ -5,7 +5,7 @@ English is the default. The language lives in st.session_state["lang"]; while
 logged in it is also saved to the account (see account.py).
 """
 
-from datetime import datetime
+from datetime import date, datetime
 
 import streamlit as st
 
@@ -139,6 +139,123 @@ TEXTS: dict[str, dict[str, str]] = {
     },
     "delete_course": {"en": "Delete course", "he": "מחיקת הקורס"},
     "course_deleted": {"en": "Deleted the course {name}.", "he": "הקורס נמחק: {name}"},
+    # ---- The study plan ----
+    "page": {"en": "Page", "he": "עמוד"},
+    "page_tasks": {"en": "Tasks", "he": "משימות"},
+    "page_plan": {"en": "My plan", "he": "התוכנית שלי"},
+    "edit_hours": {"en": "Study hours", "he": "שעות לימוד"},
+    "dlg_study_hours": {"en": "Your study hours", "he": "שעות הלימוד שלך"},
+    "hours_intro": {
+        "en": "How many hours can you study on each day of the week?",
+        "he": "כמה שעות אפשר ללמוד בכל יום בשבוע?",
+    },
+    "day_sunday": {"en": "Sunday", "he": "ראשון"},
+    "day_monday": {"en": "Monday", "he": "שני"},
+    "day_tuesday": {"en": "Tuesday", "he": "שלישי"},
+    "day_wednesday": {"en": "Wednesday", "he": "רביעי"},
+    "day_thursday": {"en": "Thursday", "he": "חמישי"},
+    "day_friday": {"en": "Friday", "he": "שישי"},
+    "day_saturday": {"en": "Saturday", "he": "שבת"},
+    "blocked_dates": {"en": "Days with no study time", "he": "ימים בלי זמן ללימוד"},
+    "choose_dates": {"en": "Choose dates", "he": "בחירת תאריכים"},
+    "blocked_help": {
+        "en": "For example a trip or a family event, in the next 8 weeks.",
+        "he": "למשל טיול או אירוע משפחתי, ב-8 השבועות הקרובים.",
+    },
+    "plan_note": {
+        "en": "A note for the planner (optional)",
+        "he": "הערה למתכנן (רשות)",
+    },
+    "plan_note_help": {
+        "en": 'A preference, such as "keep Thursday light". It cannot change the hours above.',
+        "he": 'העדפה, למשל "יום חמישי קליל". היא לא יכולה לשנות את השעות שלמעלה.',
+    },
+    "save": {"en": "Save", "he": "שמירה"},
+    "hours_saved": {"en": "Saved your study hours.", "he": "שעות הלימוד נשמרו."},
+    "build_plan": {"en": "Build my plan", "he": "בניית תוכנית"},
+    "rebuild_plan": {"en": "Rebuild plan", "he": "בנייה מחדש"},
+    "plan_building": {
+        "en": "Building your plan. This can take up to a minute...",
+        "he": "בונים את התוכנית. זה יכול לקחת עד דקה...",
+    },
+    "plan_built": {"en": "Your plan is ready.", "he": "התוכנית מוכנה."},
+    "plan_set_hours_first": {
+        "en": "First, set how many hours you can study each day: choose **Study hours**.",
+        "he": "קודם צריך להגדיר כמה שעות אפשר ללמוד בכל יום: בוחרים **שעות לימוד**.",
+    },
+    "plan_none_yet": {
+        "en": "No plan yet. Choose **Build my plan** to make one from your open tasks.",
+        "he": "עדיין אין תוכנית. בוחרים **בניית תוכנית** כדי לבנות אחת מהמשימות הפתוחות.",
+    },
+    "plan_made": {"en": "Made {when}", "he": "נבנתה ביום {when}"},
+    "plan_by_model": {
+        "en": "The AI model arranged this week, and the planner rules checked it.",
+        "he": "מודל ה-AI סידר את השבוע, וכללי המתכנן בדקו אותו.",
+    },
+    "plan_by_rules": {
+        "en": "Built by the planner rules.",
+        "he": "נבנתה לפי כללי המתכנן.",
+    },
+    "plan_fallback": {
+        "en": "Built by the planner rules, because {reason}.",
+        "he": "נבנתה לפי כללי המתכנן, כי {reason}.",
+    },
+    "reason_invalid_output": {
+        "en": "the AI model's suggestion broke the rules",
+        "he": "ההצעה של מודל ה-AI הפרה את הכללים",
+    },
+    "reason_budget_exceeded": {
+        "en": "the AI model used up its budget",
+        "he": "מודל ה-AI חרג מהמכסה שלו",
+    },
+    "reason_timeout": {
+        "en": "the AI model took too long",
+        "he": "מודל ה-AI לקח יותר מדי זמן",
+    },
+    "reason_provider_error": {
+        "en": "the AI model could not be reached",
+        "he": "לא הייתה גישה למודל ה-AI",
+    },
+    "plan_outdated": {
+        "en": "Your tasks or study hours changed since this plan was made, "
+        "or its first day has passed. Rebuild it to include the changes.",
+        "he": "המשימות או שעות הלימוד השתנו מאז שהתוכנית נבנתה, "
+        "או שהיום הראשון שלה עבר. כדאי לבנות אותה מחדש.",
+    },
+    "plan_all_fit": {
+        "en": "Everything fits before its due date.",
+        "he": "הכול נכנס לפני מועד ההגשה.",
+    },
+    "plan_estimates": {
+        "en": "Hours are estimates. The plan shows how much time fits before each "
+        "due date, not exact study sessions.",
+        "he": "השעות הן הערכה. התוכנית מראה כמה זמן נכנס לפני כל מועד הגשה, "
+        "ולא מפגשי לימוד מדויקים.",
+    },
+    "plan_week": {"en": "This week", "he": "השבוע"},
+    "plan_tasks": {"en": "How each task stands", "he": "מצב כל משימה"},
+    "day_hours": {
+        "en": "{planned} of {free} free hours planned",
+        "he": "{planned} מתוך {free} שעות פנויות מתוכננות",
+    },
+    "day_off": {"en": "No study time", "he": "אין זמן ללימוד"},
+    "assess_on_track": {
+        "en": "On track: {planned} of {needed} h planned",
+        "he": "בזמן: {planned} מתוך {needed} שעות מתוכננות",
+    },
+    "assess_shortfall": {
+        "en": "Short by {missing} h before its due date",
+        "he": "חסרות {missing} שעות עד מועד ההגשה",
+    },
+    "assess_no_estimate": {
+        "en": "No estimate: add the hours it needs to plan it",
+        "he": "אין הערכה: צריך להוסיף הערכת שעות כדי לתכנן",
+    },
+    "assess_overdue": {"en": "Its due date has passed", "he": "מועד ההגשה עבר"},
+    "assess_later": {
+        "en": "Due after the next 8 weeks",
+        "he": "מועד ההגשה אחרי 8 השבועות הקרובים",
+    },
     # ---- Errors (shown in Hebrew; in English api.py's own message is shown) ----
     "err_unavailable": {
         "en": "Cannot reach the server.",
@@ -181,6 +298,18 @@ TEXTS: dict[str, dict[str, str]] = {
         "he": "בקורס הזה יש עדיין משימות. צריך למחוק אותן קודם.",
     },
     "err_session": {"en": "Not logged in", "he": "החיבור הסתיים. יש להתחבר מחדש."},
+    "err_ai_unavailable": {
+        "en": "The planning service is not available right now.",
+        "he": "שירות התכנון לא זמין כרגע. התוכנית השמורה לא השתנתה; כדאי לנסות שוב בעוד דקה.",
+    },
+    "err_ai_bad_output": {
+        "en": "The planning service gave an answer that could not be used.",
+        "he": "שירות התכנון החזיר תשובה שאי אפשר להשתמש בה. התוכנית השמורה לא השתנתה.",
+    },
+    "err_need_hours": {
+        "en": "Set your free study hours first.",
+        "he": "קודם צריך להגדיר את שעות הלימוד.",
+    },
     "please_fix": {"en": "Please fix: ", "he": "יש לתקן: "},
 }
 
@@ -206,6 +335,7 @@ BACKEND_MESSAGES = {
     "A course named": "err_course_taken",
     "This course still has tasks": "err_course_has_tasks",
     "Not logged in": "err_session",
+    "Set your free study hours first": "err_need_hours",
 }
 
 WEEKDAYS_HE = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "ראשון"]
@@ -244,6 +374,13 @@ def date_time(moment: datetime) -> str:
         weekday, month = WEEKDAYS_HE[moment.weekday()], MONTHS_HE[moment.month - 1]
         return f"{weekday} {moment.day} {month}, {moment:%H:%M}"
     return f"{moment:%a %d %b, %H:%M}"
+
+
+def day_label(day: date) -> str:
+    """'Sun 1 Nov' in English; 'ראשון 1 נוב׳' in Hebrew."""
+    if language() == "he":
+        return f"{WEEKDAYS_HE[day.weekday()]} {day.day} {MONTHS_HE[day.month - 1]}"
+    return f"{day:%a} {day.day} {day:%b}"
 
 
 def _problem_he(problem: str) -> str:

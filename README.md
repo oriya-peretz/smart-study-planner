@@ -231,7 +231,15 @@ From `frontend/`, with the backend running:
 uv run streamlit run streamlit_app.py
 ```
 
-Open http://localhost:8501, then **Sign up** or **Log in** (the login lasts until you log out or reload the page). **By urgency** shows one numbered list, the most urgent first. **By course** shows a card per course with all of its tasks; **+ New course** adds a course, and each card has its own **Add task** and **Settings** (rename or delete). **Add task** opens a form whose fields follow the task type. Expand a task to see its details, mark it done, or edit and delete it.
+Open http://localhost:8501, then **Sign up** or **Log in** (the login lasts until you log out or reload the page). **By urgency** shows one numbered list, the most urgent first. **By course** shows a card per course with all of its tasks; **+ New course** adds a course, and each card has its own **Add task** and **Edit course** (rename or delete). **Add task** opens a form whose fields follow the task type. Expand a task to see its details, mark it done, or edit and delete it.
+
+**My plan:** the **Tasks | My plan** switch at the top opens the study plan.
+
+- **Study hours** opens a dialog for the hours free on each day of the week (in half hours), the days with no study time (chosen from the next 8 weeks), and an optional note for the planner.
+- **Build my plan** asks the backend for a plan from the open tasks; it can take up to a minute, so the page shows a spinner. It is disabled until study hours are saved.
+- The page then lists the 7 days with the hours for each task, and how each task stands: on track, short by some hours, no estimate, past its due date, or due after the next 8 weeks. It says whether the AI model arranged the week or the planner rules built it, and why. Hours are estimates, and the page says so.
+- When tasks or study hours change, or the plan's first day passes, a warning suggests **Rebuild plan**. The plan is never rebuilt without that click.
+- If the AI service is down or its answer cannot be used, the page says so in a sentence, and the saved plan stays on screen.
 
 **Language:** the **English | עברית** switch at the top changes every interface text; Hebrew is laid out right to left. While logged in the choice is saved to the account, and logging in brings it back. What users type (course names, titles, notes) is never translated.
 
@@ -249,6 +257,7 @@ uv run ruff check .
 ```
 
 `tests/test_app.py` runs the page with Streamlit's `AppTest` (no browser) and fakes the backend with `respx`, so each state can be produced on demand: the landing screen, log in and sign up (including a wrong password and a validation error), both views and the empty state, the backend being down, an expired session, a write whose reply was lost, and the exact JSON the forms send with the user's token.
+`tests/test_plan_page.py` covers My plan the same way: no hours yet, no plan yet, the week and each task's standing in words, an outdated plan, who built the plan, the exact study hours JSON sent, a 422 in words, the AI service down (503) or answering badly (502) with the saved plan still shown, the backend down, the 100-second timeout for building, and Hebrew.
 `tests/test_boundary.py` checks that only `api.py` talks HTTP.
 
 #### End-to-end test in a real browser
@@ -276,6 +285,7 @@ Checked by hand in a browser against the running stack:
 | Add a task with an empty title | The Title field is marked as required, and nothing is sent |
 | Log in with a wrong password | `Wrong email or password` |
 | A second account | Sees none of the first account's courses or tasks; the API answers `404` for them |
+| Stop the AI service, then **Rebuild plan** | `The planning service is not available right now. Your saved plan is unchanged; try again in a minute.` The saved plan stays on screen |
 
 Reloading the page logs the user out, because the login token lives in the browser tab's Streamlit session. Error messages therefore say "try again", not "reload".
 
@@ -377,6 +387,7 @@ frontend/
   streamlit_app.py the page Streamlit runs: loads data, picks a screen
   account.py       landing screen, log in, sign up, log out
   views.py         the screens: numbered list, and course cards with their tasks
+  plan_view.py     My plan: the study hours dialog, building a plan, the week and each task's standing
   dialogs.py       pop-up forms: add/edit task, add/rename/delete course
   labels.py        names, icons and due-date wording
   texts.py         every interface text in English and Hebrew, and the current language

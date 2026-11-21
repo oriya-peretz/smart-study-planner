@@ -38,6 +38,7 @@ frontend/  Streamlit, port 8501
   streamlit_app.py  landing or app screen, theme CSS, right-to-left in Hebrew
   account.py        landing, log in/sign up/log out, language switch (saved to the account)
   views.py          numbered list by urgency; course cards (3 per row) with their tasks
+  plan_view.py      My plan page (Tasks | My plan switch): study hours dialog, build/rebuild, week, task standing
   dialogs.py        dialogs driven by session_state["dialog"] and on_dismiss
   labels.py, texts.py  task wording; every UI text in en and he; error translation
   api.py            the only HTTP client (httpx); every error carries a code
