@@ -106,12 +106,17 @@ def course_card(group: api.CourseTasks, courses: list[api.Course], today: date) 
     st.caption(
         t("open_tasks_one") if open_count == 1 else t("open_tasks_many", n=open_count)
     )
-    add_col, settings_col = st.columns(2)
-    if add_col.button(
-        t("add_task"), key=f"course-add-{cid}", type="tertiary", icon=":material/add:"
+    # A row that wraps, rather than two fixed halves that cut "Edit course" short
+    # in a narrow card.
+    actions = st.container(horizontal=True, gap="medium")
+    if actions.button(
+        t("add_to_course"),
+        key=f"course-add-{cid}",
+        type="tertiary",
+        icon=":material/add:",
     ):
         dialogs.open_dialog("add-task", course_id=cid)
-    if settings_col.button(
+    if actions.button(
         t("edit_course"),
         key=f"course-settings-{cid}",
         type="tertiary",

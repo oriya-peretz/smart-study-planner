@@ -36,22 +36,22 @@ TEXTS: dict[str, dict[str, str]] = {
     # ---- The app ----
     "view": {"en": "View", "he": "תצוגה"},
     "view_course": {"en": "By course", "he": "לפי קורס"},
-    "view_urgency": {"en": "By urgency", "he": "לפי דחיפות"},
-    "show_finished": {"en": "Show finished", "he": "הצגת משימות שהסתיימו"},
-    "add_task": {"en": "Add task", "he": "הוספת משימה"},
+    "view_urgency": {"en": "By due date", "he": "לפי מועד"},
+    "show_finished": {"en": "Show completed", "he": "להציג גם מה שהושלם"},
+    "add_task": {"en": "Add a task or exam", "he": "הוספת מטלה או מבחן"},
     "loading": {"en": "Loading...", "he": "טוען..."},
     "welcome": {
         "en": "Welcome! Start by adding a course: choose **By course**, then the **+** card.",
         "he": "ברוכים הבאים! מתחילים בהוספת קורס: בוחרים **לפי קורס**, ואז את הכרטיס **+**.",
     },
     "no_tasks": {
-        "en": "No tasks here. Use **Add task** to add one.",
-        "he": "אין כאן משימות. אפשר להוסיף משימה עם **הוספת משימה**.",
+        "en": "Nothing here yet. Use **Add a task or exam** to add one.",
+        "he": "אין כאן עדיין מטלות או מבחנים. מוסיפים עם **הוספת מטלה או מבחן**.",
     },
-    "open_tasks_one": {"en": "1 open task", "he": "משימה פתוחה אחת"},
-    "open_tasks_many": {"en": "{n} open tasks", "he": "{n} משימות פתוחות"},
-    "edit_course": {"en": "Edit course", "he": "עריכת קורס"},
-    "no_tasks_yet": {"en": "No tasks yet", "he": "אין עדיין משימות"},
+    "open_tasks_one": {"en": "1 open task", "he": "מטלה פתוחה אחת"},
+    "open_tasks_many": {"en": "{n} open tasks", "he": "{n} מטלות פתוחות"},
+    "edit_course": {"en": "Edit course", "he": "עריכת הקורס"},
+    "no_tasks_yet": {"en": "No tasks yet", "he": "אין עדיין מטלות"},
     "add_new_course": {"en": "Add a new course", "he": "הוספת קורס חדש"},
     "open_link": {"en": "Open link", "he": "פתיחת הקישור"},
     "local_path": {
@@ -79,8 +79,8 @@ TEXTS: dict[str, dict[str, str]] = {
     "due_tomorrow": {"en": "tomorrow", "he": "מחר"},
     "due_in_days": {"en": "in {n} days", "he": "בעוד {n} ימים"},
     # ---- Dialogs ----
-    "dlg_add_task": {"en": "Add a task", "he": "הוספת משימה"},
-    "dlg_edit_task": {"en": "Edit task", "he": "עריכת משימה"},
+    "dlg_add_task": {"en": "Add a task or exam", "he": "הוספת מטלה או מבחן"},
+    "dlg_edit_task": {"en": "Edit", "he": "עריכה"},
     "dlg_new_course": {"en": "New course", "he": "קורס חדש"},
     "dlg_edit_course": {"en": "Edit course", "he": "עריכת קורס"},
     "need_course_first": {
@@ -108,8 +108,8 @@ TEXTS: dict[str, dict[str, str]] = {
     },
     "notes": {"en": "Notes (optional)", "he": "הערות (רשות)"},
     "need_title": {
-        "en": "Give the task a title before saving.",
-        "he": "צריך לתת למשימה כותרת לפני השמירה.",
+        "en": "Give it a title before saving.",
+        "he": "צריך לתת כותרת לפני השמירה.",
     },
     "need_course": {
         "en": "Choose a course before saving.",
@@ -120,10 +120,10 @@ TEXTS: dict[str, dict[str, str]] = {
     "deleted": {"en": "Deleted {title}.", "he": "נמחק: {title}"},
     "marked_done": {"en": "Marked {title} as done.", "he": "סומן כבוצע: {title}"},
     "save_changes": {"en": "Save changes", "he": "שמירת השינויים"},
-    "delete_task": {"en": "Delete task", "he": "מחיקת המשימה"},
+    "delete_task": {"en": "Delete task", "he": "מחיקה"},
     "confirm_delete": {
-        "en": "Delete this task for good?",
-        "he": "למחוק את המשימה לצמיתות?",
+        "en": "Delete this for good?",
+        "he": "למחוק לצמיתות?",
     },
     "yes_delete": {"en": "Yes, delete", "he": "כן, למחוק"},
     "cancel": {"en": "Cancel", "he": "ביטול"},
@@ -134,20 +134,20 @@ TEXTS: dict[str, dict[str, str]] = {
     "rename": {"en": "Rename", "he": "שינוי שם"},
     "renamed": {"en": "Renamed to {name}.", "he": "השם שונה ל-{name}"},
     "delete_tasks_first": {
-        "en": "To delete this course, delete its tasks first.",
-        "he": "כדי למחוק את הקורס, צריך קודם למחוק את המשימות שלו.",
+        "en": "To delete this course, delete its tasks and exams first.",
+        "he": "כדי למחוק את הקורס, צריך קודם למחוק את המטלות והמבחנים שלו.",
     },
     "delete_course": {"en": "Delete course", "he": "מחיקת הקורס"},
     "course_deleted": {"en": "Deleted the course {name}.", "he": "הקורס נמחק: {name}"},
     # ---- The study plan ----
     "page": {"en": "Page", "he": "עמוד"},
-    "page_tasks": {"en": "Tasks", "he": "משימות"},
-    "page_plan": {"en": "My plan", "he": "התוכנית שלי"},
-    "edit_hours": {"en": "Study hours", "he": "שעות לימוד"},
-    "dlg_study_hours": {"en": "Your study hours", "he": "שעות הלימוד שלך"},
+    "page_tasks": {"en": "Tasks and exams", "he": "מטלות ומבחנים"},
+    "page_plan": {"en": "Weekly study plan", "he": "תוכנית לימוד שבועית"},
+    "edit_hours": {"en": "Free study time", "he": "זמן פנוי ללימודים"},
+    "dlg_study_hours": {"en": "Free study time", "he": "הגדרת זמן פנוי ללימודים"},
     "hours_intro": {
-        "en": "How many hours can you study on each day of the week?",
-        "he": "כמה שעות אפשר ללמוד בכל יום בשבוע?",
+        "en": "How many hours are you free to study on each day of the week?",
+        "he": "כמה שעות פנויות יש לך ללימודים בכל יום בשבוע?",
     },
     "day_sunday": {"en": "Sunday", "he": "ראשון"},
     "day_monday": {"en": "Monday", "he": "שני"},
@@ -156,49 +156,49 @@ TEXTS: dict[str, dict[str, str]] = {
     "day_thursday": {"en": "Thursday", "he": "חמישי"},
     "day_friday": {"en": "Friday", "he": "שישי"},
     "day_saturday": {"en": "Saturday", "he": "שבת"},
-    "blocked_dates": {"en": "Days with no study time", "he": "ימים בלי זמן ללימוד"},
+    "blocked_dates": {
+        "en": "Dates with no study time",
+        "he": "תאריכים בלי זמן ללימודים",
+    },
     "choose_dates": {"en": "Choose dates", "he": "בחירת תאריכים"},
     "blocked_help": {
         "en": "For example a trip or a family event, in the next 8 weeks.",
         "he": "למשל טיול או אירוע משפחתי, ב-8 השבועות הקרובים.",
     },
-    "plan_note": {
-        "en": "A note for the planner (optional)",
-        "he": "הערה למתכנן (רשות)",
-    },
+    "plan_note": {"en": "A note for the plan (optional)", "he": "הערה לתכנון (רשות)"},
     "plan_note_help": {
-        "en": 'A preference, such as "keep Thursday light". It cannot change the hours above.',
-        "he": 'העדפה, למשל "יום חמישי קליל". היא לא יכולה לשנות את השעות שלמעלה.',
+        "en": 'Such as "keep Thursday light". It cannot change the free time above.',
+        "he": 'למשל "להשאיר את יום חמישי קל". ההערה לא משנה את הזמן הפנוי שהגדרת.',
     },
-    "save": {"en": "Save", "he": "שמירה"},
-    "hours_saved": {"en": "Saved your study hours.", "he": "שעות הלימוד נשמרו."},
-    "build_plan": {"en": "Build my plan", "he": "בניית תוכנית"},
-    "rebuild_plan": {"en": "Rebuild plan", "he": "בנייה מחדש"},
+    "save": {"en": "Save free time", "he": "שמירת הזמן הפנוי"},
+    "hours_saved": {"en": "Saved your free study time.", "he": "הזמן הפנוי נשמר."},
+    "build_plan": {"en": "Create study plan", "he": "יצירת תוכנית לימוד"},
+    "rebuild_plan": {"en": "Update study plan", "he": "עדכון תוכנית הלימוד"},
     "plan_building": {
-        "en": "Building your plan. This can take up to a minute...",
-        "he": "בונים את התוכנית. זה יכול לקחת עד דקה...",
+        "en": "Planning your week. This can take up to a minute...",
+        "he": "מתכננים את השבוע. זה יכול לקחת עד דקה...",
     },
-    "plan_built": {"en": "Your plan is ready.", "he": "התוכנית מוכנה."},
+    "plan_built": {"en": "Your study plan is ready.", "he": "תוכנית הלימוד מוכנה."},
     "plan_set_hours_first": {
-        "en": "First, set how many hours you can study each day: choose **Study hours**.",
-        "he": "קודם צריך להגדיר כמה שעות אפשר ללמוד בכל יום: בוחרים **שעות לימוד**.",
+        "en": "To create a plan, first set how much free study time you have each day.",
+        "he": "כדי ליצור תוכנית, צריך קודם להגדיר כמה זמן פנוי יש לך ללימודים בכל יום.",
     },
     "plan_none_yet": {
-        "en": "No plan yet. Choose **Build my plan** to make one from your open tasks.",
-        "he": "עדיין אין תוכנית. בוחרים **בניית תוכנית** כדי לבנות אחת מהמשימות הפתוחות.",
+        "en": "No study plan yet.",
+        "he": "עדיין אין תוכנית לימוד.",
     },
-    "plan_made": {"en": "Made {when}", "he": "נבנתה ביום {when}"},
+    "plan_made": {"en": "Made {when}", "he": "נוצרה ביום {when}"},
     "plan_by_model": {
-        "en": "The AI model arranged this week, and the planner rules checked it.",
-        "he": "מודל ה-AI סידר את השבוע, וכללי המתכנן בדקו אותו.",
+        "en": "The AI model arranged this week, and the planning rules checked it.",
+        "he": "מודל ה-AI סידר את השבוע, וכללי התכנון בדקו אותו.",
     },
     "plan_by_rules": {
-        "en": "Built by the planner rules.",
-        "he": "נבנתה לפי כללי המתכנן.",
+        "en": "The plan was calculated by the planning rules.",
+        "he": "התוכנית חושבה לפי כללי התכנון.",
     },
     "plan_fallback": {
-        "en": "Built by the planner rules, because {reason}.",
-        "he": "נבנתה לפי כללי המתכנן, כי {reason}.",
+        "en": "The plan was calculated by the planning rules, because {reason}.",
+        "he": "התוכנית חושבה לפי כללי התכנון, כי {reason}.",
     },
     "reason_invalid_output": {
         "en": "the AI model's suggestion broke the rules",
@@ -217,44 +217,90 @@ TEXTS: dict[str, dict[str, str]] = {
         "he": "לא הייתה גישה למודל ה-AI",
     },
     "plan_outdated": {
-        "en": "Your tasks or study hours changed since this plan was made, "
-        "or its first day has passed. Rebuild it to include the changes.",
-        "he": "המשימות או שעות הלימוד השתנו מאז שהתוכנית נבנתה, "
-        "או שהיום הראשון שלה עבר. כדאי לבנות אותה מחדש.",
+        "en": "The plan is out of date: something changed in your tasks or free time since it was made.",
+        "he": "התוכנית לא מעודכנת: משהו השתנה במטלות או בזמן הפנוי מאז שנוצרה.",
     },
-    "plan_all_fit": {
-        "en": "Everything fits before its due date.",
-        "he": "הכול נכנס לפני מועד ההגשה.",
+    "plan_tasks": {
+        "en": "Tasks and exams in the plan",
+        "he": "המטלות והמבחנים בתוכנית",
     },
-    "plan_estimates": {
-        "en": "Hours are estimates. The plan shows how much time fits before each "
-        "due date, not exact study sessions.",
-        "he": "השעות הן הערכה. התוכנית מראה כמה זמן נכנס לפני כל מועד הגשה, "
-        "ולא מפגשי לימוד מדויקים.",
+    "day_off": {"en": "No free time", "he": "אין זמן פנוי"},
+    "add_to_course": {"en": "Add", "he": "הוספה"},
+    "plan_subtitle": {
+        "en": "How your study time is split between tasks and exams this week",
+        "he": "חלוקת זמן הלימוד שלך בין המטלות והמבחנים השבוע",
     },
-    "plan_week": {"en": "This week", "he": "השבוע"},
-    "plan_tasks": {"en": "How each task stands", "he": "מצב כל משימה"},
-    "day_hours": {
-        "en": "{planned} of {free} free hours planned",
-        "he": "{planned} מתוך {free} שעות פנויות מתוכננות",
+    "plan_details": {"en": "Details", "he": "פרטים"},
+    "plan_basis": {
+        "en": "The plan follows your free study time and due dates. Its hours come "
+        "from your estimates: they are planned study time, not work already done.",
+        "he": "התוכנית מתאימה לזמן הפנוי שהגדרת ולמועדים. השעות מבוססות על "
+        "ההערכות שלך: זה זמן לימוד מתוכנן, לא עבודה שכבר בוצעה.",
     },
-    "day_off": {"en": "No study time", "he": "אין זמן ללימוד"},
-    "assess_on_track": {
-        "en": "On track: {planned} of {needed} h planned",
-        "he": "בזמן: {planned} מתוך {needed} שעות מתוכננות",
+    "day_free": {"en": "Free: {h}", "he": "זמן פנוי: {h}"},
+    "status_planned": {
+        "en": "All the study time it needs is in the plan",
+        "he": "כל זמן הלימוד הנדרש מופיע בתוכנית",
     },
-    "assess_shortfall": {
-        "en": "Short by {missing} h before its due date",
-        "he": "חסרות {missing} שעות עד מועד ההגשה",
+    "status_short_one": {
+        "en": "The plan is still {h} short before {due}",
+        "he": "חסרה בתוכנית עוד {h} לפני {due}",
     },
-    "assess_no_estimate": {
-        "en": "No estimate: add the hours it needs to plan it",
-        "he": "אין הערכה: צריך להוסיף הערכת שעות כדי לתכנן",
+    "status_short_many": {
+        "en": "The plan is still {h} short before {due}",
+        "he": "חסרות בתוכנית עוד {h} לפני {due}",
     },
-    "assess_overdue": {"en": "Its due date has passed", "he": "מועד ההגשה עבר"},
-    "assess_later": {
-        "en": "Due after the next 8 weeks",
-        "he": "מועד ההגשה אחרי 8 השבועות הקרובים",
+    "status_no_estimate_exam": {
+        "en": "To plan study time for this exam, enter the hours it needs",
+        "he": "כדי לתכנן לימוד למבחן, צריך להזין כמה שעות נדרשות",
+    },
+    "status_no_estimate_task": {
+        "en": "To plan study time for this task, enter the hours it needs",
+        "he": "כדי לתכנן לימוד למטלה, צריך להזין כמה שעות נדרשות",
+    },
+    "status_overdue": {
+        "en": "Its due date has passed, so it is not in the plan",
+        "he": "המועד עבר, ולכן אין לזה זמן בתוכנית",
+    },
+    "status_later": {
+        "en": "Due more than 8 weeks ahead, so not in the plan yet",
+        "he": "המועד בעוד יותר מ-8 שבועות, ולכן עוד לא בתוכנית",
+    },
+    "due_word_task": {"en": "the due date", "he": "ההגשה"},
+    "due_word_exam": {"en": "the exam", "he": "המבחן"},
+    "detail_needed": {"en": "Study time needed: {h}", "he": "זמן לימוד נדרש: {h}"},
+    "detail_planned": {
+        "en": "In the plan before {due}: {h}",
+        "he": "בתוכנית לפני {due}: {h}",
+    },
+    "detail_this_week": {"en": "this week: {h}", "he": "השבוע: {h}"},
+    "detail_missing": {"en": "Still missing: {h}", "he": "עוד חסר בתוכנית: {h}"},
+    "detail_short_hint": {
+        "en": "To fit it in, add free study time or update the hours it needs.",
+        "he": "כדי שייכנס, אפשר להוסיף זמן פנוי או לעדכן כמה שעות נדרשות.",
+    },
+    "detail_edit_hint": {
+        "en": "Enter it by editing it under Tasks and exams.",
+        "he": "אפשר להזין את זה בעריכה, במסך מטלות ומבחנים.",
+    },
+    "plan_failed": {
+        "en": "Couldn't create a new plan right now. Your previous plan is kept. "
+        "Try again in a few minutes.",
+        "he": "לא הצלחנו ליצור תוכנית חדשה כרגע. התוכנית הקודמת נשמרה. "
+        "אפשר לנסות שוב בעוד כמה דקות.",
+    },
+    "plan_failed_bad": {
+        "en": "Couldn't use the new plan. Your previous plan is kept.",
+        "he": "לא הצלחנו להשתמש בתוכנית החדשה. התוכנית הקודמת נשמרה.",
+    },
+    "tech_details": {"en": "Technical details", "he": "פרטים טכניים"},
+    "tech_unavailable": {
+        "en": "The AI service did not answer (503).",
+        "he": "שירות ה-AI לא ענה (503).",
+    },
+    "tech_bad_output": {
+        "en": "The AI service's answer failed the backend's checks (502).",
+        "he": "התשובה של שירות ה-AI לא עברה את הבדיקות של השרת (502).",
     },
     # ---- Errors (shown in Hebrew; in English api.py's own message is shown) ----
     "err_unavailable": {
@@ -267,7 +313,7 @@ TEXTS: dict[str, dict[str, str]] = {
     },
     "err_no_answer_write": {
         "en": "The server did not answer in time.",
-        "he": "השרת לא ענה בזמן. ייתכן שהשינוי נשמר: כדאי לבדוק את המשימות לפני שמנסים שוב.",
+        "he": "השרת לא ענה בזמן. ייתכן שהשינוי נשמר: כדאי לבדוק את המטלות לפני שמנסים שוב.",
     },
     "err_not_found": {
         "en": "That item no longer exists.",
@@ -295,7 +341,7 @@ TEXTS: dict[str, dict[str, str]] = {
     },
     "err_course_has_tasks": {
         "en": "This course still has tasks.",
-        "he": "בקורס הזה יש עדיין משימות. צריך למחוק אותן קודם.",
+        "he": "בקורס הזה יש עדיין מטלות או מבחנים. צריך למחוק אותם קודם.",
     },
     "err_session": {"en": "Not logged in", "he": "החיבור הסתיים. יש להתחבר מחדש."},
     "err_ai_unavailable": {
@@ -381,6 +427,17 @@ def day_label(day: date) -> str:
     if language() == "he":
         return f"{WEEKDAYS_HE[day.weekday()]} {day.day} {MONTHS_HE[day.month - 1]}"
     return f"{day:%a} {day.day} {day:%b}"
+
+
+def duration(hours: float) -> str:
+    """Hours in words: '1 hour', '2.5 hours'; 'שעה', 'שעתיים וחצי' in Hebrew."""
+    if language() == "he":
+        whole, half = int(hours), hours % 1 >= 0.5
+        words = {0: "", 1: "שעה", 2: "שעתיים"}.get(whole, f"{whole} שעות")
+        if not words:
+            return "חצי שעה" if half else "0 שעות"
+        return f"{words} וחצי" if half else words
+    return "1 hour" if hours == 1 else f"{hours:g} hours"
 
 
 def _problem_he(problem: str) -> str:

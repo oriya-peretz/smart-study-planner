@@ -1,9 +1,11 @@
-"""My plan: the study hours dialog, building a plan, and showing the saved one.
+"""Weekly study plan: the free study time dialog, creating a plan, and the saved one.
 
 Everything goes through the backend, which calls the AI service and saves the
 plan. This page only reads the plan and asks for a new one when the user says so.
+One primary action at a time: set free time first, then create or update the plan.
 """
 
+import html
 from datetime import date, datetime, timedelta
 
 import streamlit as st
@@ -12,23 +14,33 @@ import account
 import api
 import dialogs
 from labels import plain
-from texts import date_time, day_label, error_message, separator, t
+from texts import date_time, day_label, duration, error_message, separator, t
 
-# The Israeli week: the hours dialog lists the days from Sunday.
+# The Israeli week: the free time dialog lists the days from Sunday.
 WEEK = ("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday")
 HORIZON_DAYS = 56  # blocked dates can be chosen in the 8 weeks the plan looks at
 
-ASSESSMENT_COLORS = {
-    "on_track": "green",
-    "shortfall": "orange",
-    "no_estimate": "gray",
-    "overdue": "red",
-    "later": "gray",
-}
+# Each task's line says what the plan checked, never whether the work was done.
+STATUS_COLORS = {"shortfall": "orange", "no_estimate": "gray", "later": "gray"}
 
-
-def hours(value: float) -> str:
-    return f"{value:g}"
+# The week as clean day cards. auto-fill sets how many fit on a row; the grid
+# follows the page's direction, so Sunday is on the right in Hebrew.
+WEEK_STYLE = """
+<style>
+  .plan-week { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+               gap: .6rem; margin: .4rem 0 1.2rem; }
+  .plan-day { border: 1px solid rgba(49, 51, 63, .15); border-radius: .7rem;
+              padding: .6rem .75rem; }
+  .plan-day.today { border-color: #B08D57; }
+  .plan-day.off { background: #F7F5F0; border-color: transparent; }
+  .plan-head { font-weight: 500; font-size: .8rem; }
+  .plan-free { font-size: .68rem; color: #7A7266; margin-bottom: .3rem; }
+  .plan-block { border-inline-start: 2px solid #B08D57; padding-inline-start: .5rem;
+                margin: .4rem 0; }
+  .plan-title { font-size: .78rem; line-height: 1.3; }
+  .plan-meta { font-size: .68rem; color: #7A7266; }
+</style>
+"""
 
 
 def bold(text: str) -> str:
@@ -91,24 +103,37 @@ def study_hours(limits: api.Constraints) -> None:
                 dialogs.notify(t("hours_saved"))
 
 
-def build(label: str, saved_hours: bool) -> None:
-    """The Build / Rebuild button. A failure keeps the saved plan on screen."""
-    if not st.button(
-        label,
+def build_button(plan: api.Plan | None) -> bool:
+    """Create or Update: the page's primary action once free time is set."""
+    return st.button(
+        t("rebuild_plan") if plan else t("build_plan"),
         key="build-plan",
         type="primary",
         icon=":material/auto_awesome:",
-        disabled=not saved_hours,
-        width="stretch",
-    ):
-        return
+    )
+
+
+def build() -> None:
+    """Ask for a new plan. A failure says what it means and keeps the saved plan."""
     try:
         with st.spinner(t("plan_building")):
             account.backend().build_plan()
     except api.NotLoggedIn:
         account.end_session("session_ended")
     except api.BackendError as exc:
-        st.error(error_message(exc))
+        technical = {
+            "ai_unavailable": "tech_unavailable",
+            "ai_bad_output": "tech_bad_output",
+        }
+        if exc.code in technical:
+            failed = (
+                "plan_failed" if exc.code == "ai_unavailable" else "plan_failed_bad"
+            )
+            st.error(t(failed))
+            with st.expander(t("tech_details")):
+                st.caption(t(technical[exc.code]))
+        else:
+            st.error(error_message(exc))
     else:
         dialogs.notify(t("plan_built"))
 
@@ -122,73 +147,94 @@ def source_line(plan: api.Plan) -> str:
 
 
 def week(plan: api.Plan) -> None:
-    st.markdown(f"#### {t('plan_week')}")
+    """Seven day cards: what to study, for which course, and for how long."""
+    today = date.today()
+    cards = []
     for day in plan["days"]:
-        heading = bold(day_label(date.fromisoformat(day["date"])))
-        if day["free_hours"]:
-            amount = t(
-                "day_hours",
-                planned=hours(day["planned_hours"]),
-                free=hours(day["free_hours"]),
+        when = date.fromisoformat(day["date"])
+        head = f'<div class="plan-head">{html.escape(day_label(when))}</div>'
+        if not day["free_hours"]:
+            cards.append(
+                f'<div class="plan-day off">{head}'
+                f'<div class="plan-free">{html.escape(t("day_off"))}</div></div>'
             )
-        else:
-            amount = t("day_off")
-        lines = [heading + separator() + f":gray[{amount}]"]
-        # Plain lines under the day, not a Markdown list: a list's bullet and
-        # text drift apart when an English title sits in a right-to-left page.
-        for block in day["blocks"]:
-            lines.append(
-                separator().join(
-                    [
-                        plain(block["title"]),
-                        plain(block["course"]),
-                        t("hours", h=hours(block["hours"])),
-                    ]
-                )
-            )
-        st.markdown("  \n".join(lines))  # two spaces + newline: a line break
+            continue
+        free = t("day_free", h=duration(day["free_hours"]))
+        if when == today:
+            free = t("due_today").capitalize() + " · " + free
+        blocks = "".join(
+            '<div class="plan-block">'
+            f'<div class="plan-title">{html.escape(block["title"])}</div>'
+            f'<div class="plan-meta">{html.escape(block["course"])} · '
+            f"{html.escape(duration(block['hours']))}</div></div>"
+            for block in day["blocks"]
+        )
+        today_class = " today" if when == today else ""
+        cards.append(
+            f'<div class="plan-day{today_class}">{head}'
+            f'<div class="plan-free">{html.escape(free)}</div>{blocks}</div>'
+        )
+    st.html(WEEK_STYLE + f'<div class="plan-week">{"".join(cards)}</div>')
 
 
-def assessment(item: dict) -> str:
+def status(item: dict, due_word: str) -> str:
+    """One line on what the plan checked for this task."""
     match item["assessment"]:
         case "on_track":
-            return t(
-                "assess_on_track",
-                planned=hours(item["planned_hours"]),
-                needed=hours(item["needed_hours"]),
-            )
+            return t("status_planned")
         case "shortfall":
-            return t("assess_shortfall", missing=hours(item["missing_hours"]))
+            missing = item["missing_hours"]
+            key = "status_short_one" if missing <= 1 else "status_short_many"
+            return t(key, h=duration(missing), due=due_word)
+        case "no_estimate":
+            kind = "exam" if item["type"] == "exam" else "task"
+            return t(f"status_no_estimate_{kind}")
         case other:
-            return t(f"assess_{other}")
+            return t(f"status_{other}")
+
+
+def breakdown(item: dict, due_word: str) -> None:
+    """The full numbers, shown only when the user opens the task."""
+    if item["needed_hours"] is None:
+        st.caption(t("detail_edit_hint"))
+        return
+    lines = [t("detail_needed", h=duration(item["needed_hours"]))]
+    planned = t("detail_planned", due=due_word, h=duration(item["planned_hours"]))
+    this_week = item["planned_hours_this_week"]
+    if this_week and this_week != item["planned_hours"]:
+        planned += f" ({t('detail_this_week', h=duration(this_week))})"
+    lines.append(planned)
+    if item["missing_hours"]:
+        lines.append(t("detail_missing", h=duration(item["missing_hours"])))
+    st.caption(separator().join(lines))
+    if item["missing_hours"]:
+        st.caption(t("detail_short_hint"))
 
 
 def standing(plan: api.Plan) -> None:
-    st.markdown(f"#### {t('plan_tasks')}")
+    st.markdown(f"##### {t('plan_tasks')}")
     for item in plan["tasks"]:
-        color = ASSESSMENT_COLORS[item["assessment"]]
-        parts = [
-            bold(plain(item["title"])),
-            plain(item["course"]),
-            f":{color}[{assessment(item)}]",
-        ]
-        st.markdown(separator().join(parts))
+        due_word = t("due_word_exam" if item["type"] == "exam" else "due_word_task")
+        line = status(item, due_word)
+        if color := STATUS_COLORS.get(item["assessment"]):
+            line = f":{color}[{line}]"
+        due = day_label(datetime.fromisoformat(item["due_at"]).date())
+        label = separator().join(
+            [bold(plain(item["title"])), plain(item["course"]), due, line]
+        )
+        with st.expander(label):
+            breakdown(item, due_word)
 
 
-def show(plan: api.Plan) -> None:
-    made = datetime.fromisoformat(plan["created_at"])
-    st.caption(t("plan_made", when=date_time(made)) + separator() + source_line(plan))
-    if plan["outdated"]:
-        st.warning(t("plan_outdated"), icon=":material/update:")
-    elif plan["all_fit"]:
-        st.success(t("plan_all_fit"))
-    week(plan)
-    standing(plan)
-    st.caption(t("plan_estimates"))
+def details(plan: api.Plan) -> None:
+    made = date_time(datetime.fromisoformat(plan["created_at"]))
+    with st.expander(t("plan_made", when=made) + separator() + t("plan_details")):
+        st.caption(t("plan_basis"))
+        st.caption(source_line(plan))
 
 
 def plan_page() -> None:
-    """The whole My plan page."""
+    """The whole Weekly study plan page."""
     backend = account.backend()
     try:
         limits = backend.get_constraints()
@@ -199,23 +245,43 @@ def plan_page() -> None:
         st.error(error_message(exc))
         st.stop()
 
-    hours_col, build_col = st.columns(2)
-    if hours_col.button(
-        t("edit_hours"),
-        key="edit-hours",
-        icon=":material/schedule:",
-        width="stretch",
+    outdated = plan is not None and plan["outdated"]
+    clicked = False
+    st.caption(t("plan_subtitle"))
+    with st.container(
+        key="plan-bar",
+        horizontal=True,
+        horizontal_alignment="distribute",
+        vertical_alignment="center",
     ):
-        dialogs.open_dialog("study-hours")
-    with build_col:
-        build(t("rebuild_plan") if plan else t("build_plan"), limits["saved"])
+        # Before any free time is saved, setting it is the main action.
+        if st.button(
+            t("edit_hours"),
+            key="edit-hours",
+            type="tertiary" if limits["saved"] else "primary",
+            icon=":material/schedule:",
+        ):
+            dialogs.open_dialog("study-hours")
+        if limits["saved"] and not outdated:
+            clicked = build_button(plan)
+    if outdated:
+        # The update button lives here only, so there is never a second one.
+        with st.container(
+            key="plan-outdated", horizontal=True, vertical_alignment="center"
+        ):
+            st.markdown(t("plan_outdated"), width="stretch")
+            clicked = build_button(plan)
 
+    if clicked:
+        build()
     if not limits["saved"]:
         st.info(t("plan_set_hours_first"))
     elif plan is None:
-        st.info(t("plan_none_yet"))
+        st.caption(t("plan_none_yet"))
     if plan is not None:
-        show(plan)
+        week(plan)
+        standing(plan)
+        details(plan)
 
     if st.session_state.get("dialog", {}).get("name") == "study-hours":
         dialogs.open_as("dlg_study_hours", study_hours, limits, width="medium")

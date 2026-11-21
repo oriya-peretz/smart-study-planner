@@ -38,7 +38,7 @@ frontend/  Streamlit, port 8501
   streamlit_app.py  landing or app screen, theme CSS, right-to-left in Hebrew
   account.py        landing, log in/sign up/log out, language switch (saved to the account)
   views.py          numbered list by urgency; course cards (3 per row) with their tasks
-  plan_view.py      My plan page (Tasks | My plan switch): study hours dialog, build/rebuild, week, task standing
+  plan_view.py      Weekly study plan (switch: Tasks and exams | Weekly study plan): free time dialog, create/update, day cards, planning lines
   dialogs.py        dialogs driven by session_state["dialog"] and on_dismiss
   labels.py, texts.py  task wording; every UI text in en and he; error translation
   api.py            the only HTTP client (httpx); every error carries a code
@@ -61,6 +61,7 @@ ai-service/  FastAPI, port 8001, stores nothing (EX3)
 - Backend plan flow: `POST /plan` sends unfinished tasks + constraints to the AI service, checks the answer itself, then saves it (one plan per user); a failure keeps the old plan. 503 = unavailable (retried 3x for connect/timeout/503/504 only), 502 = invalid output. `GET /plan` never calls the AI; `outdated` when inputs changed or the first day passed.
 - The model may only rearrange the first week; weeks 2 to 8 are always code. Any model failure returns the baseline with `fallback_reason`, never an error. Logs hold no user text.
 - UI: white and gold theme in `frontend/.streamlit/config.toml` (Jost font, `baseFontSize = 20`, and Streamlit accepts only one font URL). In Hebrew: right-to-left marks around line separators; dates, times, toggles and switches stay left to right; the top bar keeps the same layout as English (the email and Log out on the left, the language on the right). The landing content is vertically centered (`st-key-landing-content`).
+- Screens (agreed with the user): one primary action per screen, no duplicate buttons, short text only where needed, details on demand. Hebrew uses "מטלה" ("מטלות ומבחנים" for both). Plan wording is about planned study time ("in the plan"), never work done; the "out of date" note is general because the backend only returns a yes/no.
 
 ### EASS requirements
 

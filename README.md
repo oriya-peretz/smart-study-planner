@@ -231,15 +231,19 @@ From `frontend/`, with the backend running:
 uv run streamlit run streamlit_app.py
 ```
 
-Open http://localhost:8501, then **Sign up** or **Log in** (the login lasts until you log out or reload the page). **By urgency** shows one numbered list, the most urgent first. **By course** shows a card per course with all of its tasks; **+ New course** adds a course, and each card has its own **Add task** and **Edit course** (rename or delete). **Add task** opens a form whose fields follow the task type. Expand a task to see its details, mark it done, or edit and delete it.
+Open http://localhost:8501, then **Sign up** or **Log in** (the login lasts until you log out or reload the page). The switch at the top chooses between two screens, **Tasks and exams** (shown first) and **Weekly study plan**. Each screen has one main action; quieter actions and details open on demand.
 
-**My plan:** the **Tasks | My plan** switch at the top opens the study plan.
+**Tasks and exams:** **By due date** shows one numbered list, the nearest due date first (open items before finished ones). **By course** shows a card per course with all of its tasks; the **+** card adds a course, and each card has its own **Add** and **Edit course** (rename or delete). **Add a task or exam** opens a form whose fields follow the type. Open a task to see its details, mark it done, or **Edit** it: the edit form also changes its status and deletes it.
 
-- **Study hours** opens a dialog for the hours free on each day of the week (in half hours), the days with no study time (chosen from the next 8 weeks), and an optional note for the planner.
-- **Build my plan** asks the backend for a plan from the open tasks; it can take up to a minute, so the page shows a spinner. It is disabled until study hours are saved.
-- The page then lists the 7 days with the hours for each task, and how each task stands: on track, short by some hours, no estimate, past its due date, or due after the next 8 weeks. It says whether the AI model arranged the week or the planner rules built it, and why. Hours are estimates, and the page says so.
-- When tasks or study hours change, or the plan's first day passes, a warning suggests **Rebuild plan**. The plan is never rebuilt without that click.
-- If the AI service is down or its answer cannot be used, the page says so in a sentence, and the saved plan stays on screen.
+**Weekly study plan:**
+
+- **Free study time** opens a dialog for the hours free on each day of the week (in half hours), the dates with no study time (chosen from the next 8 weeks), and an optional note for the plan. Before it is saved, it is the screen's main action.
+- **Create study plan**, or **Update study plan** once there is one, asks the backend for a plan from the open tasks; it can take up to a minute, so the page shows a spinner.
+- The week is a grid of day cards, Sunday to Saturday (right to left in Hebrew), as many per row as the screen fits. Each card shows the day's free time and what to study, for which course, for how long, in words such as "1.5 hours" or "שעה וחצי".
+- Each task has one line on what the plan checked, in planning words: all of its study time is in the plan, the plan is still some hours short before the due date, it needs an estimate, its date has passed, or it is due after 8 weeks. Opening it shows the study time needed, in the plan (and this week), and still missing.
+- When tasks or free time change, or the plan's first day passes, a short note says the plan is out of date, with the one **Update study plan** button next to it. The plan is never rebuilt without that click.
+- **Details**, at the bottom, says the hours are planned study time based on the user's estimates, not work done, and whether the AI model arranged the week or the planning rules calculated it, and why.
+- If the AI service is down or its answer cannot be used, a short sentence says the previous plan is kept; the technical cause is under **Technical details**.
 
 **Language:** the **English | עברית** switch at the top changes every interface text; Hebrew is laid out right to left. While logged in the choice is saved to the account, and logging in brings it back. What users type (course names, titles, notes) is never translated.
 
@@ -257,7 +261,7 @@ uv run ruff check .
 ```
 
 `tests/test_app.py` runs the page with Streamlit's `AppTest` (no browser) and fakes the backend with `respx`, so each state can be produced on demand: the landing screen, log in and sign up (including a wrong password and a validation error), both views and the empty state, the backend being down, an expired session, a write whose reply was lost, and the exact JSON the forms send with the user's token.
-`tests/test_plan_page.py` covers My plan the same way: no hours yet, no plan yet, the week and each task's standing in words, an outdated plan, who built the plan, the exact study hours JSON sent, a 422 in words, the AI service down (503) or answering badly (502) with the saved plan still shown, the backend down, the 100-second timeout for building, and Hebrew.
+`tests/test_plan_page.py` covers the weekly study plan the same way: the one main action in each state (no free time yet, no plan yet, a plan, an outdated plan with a single update button), the day cards (with titles escaped as HTML), each task's planning line and its breakdown, the details, the exact free time JSON sent, a 422 in words, the AI service down (503) or answering badly (502) with the saved plan still shown and technical details on demand, the backend down, the 100-second timeout, Hebrew, and Hebrew durations.
 `tests/test_boundary.py` checks that only `api.py` talks HTTP.
 
 #### End-to-end test in a real browser
@@ -285,7 +289,7 @@ Checked by hand in a browser against the running stack:
 | Add a task with an empty title | The Title field is marked as required, and nothing is sent |
 | Log in with a wrong password | `Wrong email or password` |
 | A second account | Sees none of the first account's courses or tasks; the API answers `404` for them |
-| Stop the AI service, then **Rebuild plan** | `The planning service is not available right now. Your saved plan is unchanged; try again in a minute.` The saved plan stays on screen |
+| Stop the AI service, then **Update study plan** | `Couldn't create a new plan right now. Your previous plan is kept. Try again in a few minutes.` The saved plan stays on screen; **Technical details** says the AI service did not answer (503) |
 
 Reloading the page logs the user out, because the login token lives in the browser tab's Streamlit session. Error messages therefore say "try again", not "reload".
 
@@ -387,7 +391,7 @@ frontend/
   streamlit_app.py the page Streamlit runs: loads data, picks a screen
   account.py       landing screen, log in, sign up, log out
   views.py         the screens: numbered list, and course cards with their tasks
-  plan_view.py     My plan: the study hours dialog, building a plan, the week and each task's standing
+  plan_view.py     Weekly study plan: the free time dialog, creating a plan, day cards, each task's planning line
   dialogs.py       pop-up forms: add/edit task, add/rename/delete course
   labels.py        names, icons and due-date wording
   texts.py         every interface text in English and Hebrew, and the current language

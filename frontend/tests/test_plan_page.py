@@ -1,4 +1,4 @@
-"""The My plan page, with the backend faked by respx (see test_app.py)."""
+"""The Weekly study plan page, with the backend faked by respx (see test_app.py)."""
 
 import json
 from datetime import date, timedelta
@@ -96,96 +96,152 @@ def my_plan(backend, constraints=SAVED, plan=PLAN) -> AppTest:
 
 
 def text(at: AppTest) -> str:
+    """Everything the page says in words, including expander labels."""
     parts = [m.value for m in at.markdown] + [c.value for c in at.caption]
     parts += [box.value for box in (*at.info, *at.warning, *at.success, *at.error)]
+    parts += [e.label for e in at.expander]
     return "\n".join(parts)
 
 
-def test_before_any_hours_the_page_asks_for_them_and_cannot_build(backend):
+def week(at: AppTest) -> str:
+    """The day cards, which are drawn as HTML."""
+    return "".join(e.proto.body for e in at.get("html") if "plan-week" in e.proto.body)
+
+
+def primary(at: AppTest) -> list[str]:
+    """The labels of the page's primary buttons."""
+    return [b.label for b in at.button if b.proto.type == "primary"]
+
+
+def test_before_any_free_time_setting_it_is_the_one_main_action(backend):
     build = backend.post("/plan")
     at = my_plan(backend, constraints=UNSAVED, plan=None)
 
     assert not at.exception
-    assert "set how many hours you can study" in at.info[0].value
-    assert at.button(key="build-plan").disabled
+    assert "first set how much free study time" in at.info[0].value
+    assert primary(at) == ["Free study time"]
+    assert not [b for b in at.button if b.key == "build-plan"]  # nothing to click yet
     assert not build.called
 
 
-def test_with_hours_but_no_plan_yet(backend):
+def test_with_free_time_but_no_plan_the_main_action_is_create(backend):
     at = my_plan(backend, plan=None)
 
-    assert "No plan yet" in at.info[0].value
-    assert at.button(key="build-plan").label == "Build my plan"
-    assert not at.button(key="build-plan").disabled
+    assert primary(at) == ["Create study plan"]
+    assert at.button(key="edit-hours").proto.type == "tertiary"  # quieter
+    assert "No study plan yet." in text(at)
 
 
-def test_the_plan_shows_the_week_and_each_task(backend):
+def test_the_plan_shows_the_week_as_day_cards(backend):
     at = my_plan(backend)
-    page = text(at)
+    cards = week(at)
 
-    assert "The AI model arranged this week" in page
-    assert "Everything fits before its due date." in page
-    assert "2 of 2 free hours planned" in page
-    assert "Sheet 3  ·  Automata  ·  2 h" in page
-    assert "No study time" in page  # the days with no free hours
-    assert "On track: 3 of 3 h planned" in page
-    assert "Hours are estimates" in page
-    assert at.button(key="build-plan").label == "Rebuild plan"
+    assert primary(at) == ["Update study plan"]
+    assert cards.count('class="plan-day') == 7
+    assert "Sheet 3" in cards and "Automata" in cards and "2 hours" in cards
+    assert "Free: 2 hours" in cards
+    assert cards.count("No free time") == 6
+    assert "How your study time is split" in text(at)
+
+
+def test_a_title_cannot_inject_html_into_the_week(backend):
+    sneaky = SHEET | {"title": "<b>Sheet</b>"}
+    at = my_plan(
+        backend, plan=PLAN | {"days": [day(0, 2, [sneaky])] + PLAN["days"][1:]}
+    )
+
+    assert "&lt;b&gt;Sheet&lt;/b&gt;" in week(at)
 
 
 @pytest.mark.parametrize(
     ("item", "expected"),
     [
         pytest.param(
-            assessed(1, "Sheet 3", "shortfall", missing_hours=1.5),
-            "Short by 1.5 h before its due date",
+            assessed(1, "Sheet 3", "on_track"),
+            "All the study time it needs is in the plan",
+            id="planned",
+        ),
+        pytest.param(
+            assessed(1, "Sheet 3", "shortfall", planned_hours=7.5, missing_hours=2.5),
+            "The plan is still 2.5 hours short before the due date",
             id="shortfall",
         ),
         pytest.param(
             assessed(1, "Sheet 3", "no_estimate", needed_hours=None),
-            "No estimate: add the hours it needs to plan it",
-            id="no-estimate",
+            "To plan study time for this task, enter the hours it needs",
+            id="no-estimate-task",
         ),
         pytest.param(
-            assessed(1, "Sheet 3", "overdue"), "Its due date has passed", id="overdue"
+            assessed(1, "Final", "no_estimate", needed_hours=None, type="exam"),
+            "To plan study time for this exam, enter the hours it needs",
+            id="no-estimate-exam",
         ),
         pytest.param(
-            assessed(1, "Sheet 3", "later"), "Due after the next 8 weeks", id="later"
+            assessed(1, "Sheet 3", "overdue"),
+            "Its due date has passed, so it is not in the plan",
+            id="overdue",
+        ),
+        pytest.param(
+            assessed(1, "Sheet 3", "later"),
+            "Due more than 8 weeks ahead, so not in the plan yet",
+            id="later",
         ),
     ],
 )
-def test_each_assessment_is_said_in_words(backend, item, expected):
+def test_each_task_says_what_the_plan_checked(backend, item, expected):
     at = my_plan(backend, plan=PLAN | {"all_fit": False, "tasks": [item]})
 
-    assert expected in text(at)
-    assert "Everything fits" not in text(at)
+    assert expected in at.expander[0].label
+    # Planning words only: nothing that reads as the work being done.
+    assert "on track" not in text(at).lower()
 
 
-def test_an_outdated_plan_says_why_to_rebuild(backend):
+def test_opening_a_task_shows_the_full_breakdown(backend):
+    item = assessed(
+        1, "Lab report", "shortfall", needed_hours=10, planned_hours=7.5,
+        planned_hours_this_week=3, missing_hours=2.5,
+    )  # fmt: skip
+    at = my_plan(backend, plan=PLAN | {"tasks": [item]})
+    inside = " ".join(c.value for c in at.expander[0].caption)
+
+    assert "Study time needed: 10 hours" in inside
+    assert "In the plan before the due date: 7.5 hours (this week: 3 hours)" in inside
+    assert "Still missing: 2.5 hours" in inside
+    assert "add free study time or update the hours it needs" in inside
+
+
+def test_an_outdated_plan_has_one_update_button_next_to_the_note(backend):
     at = my_plan(backend, plan=PLAN | {"outdated": True})
 
-    assert "changed since this plan was made" in at.warning[0].value
+    assert "The plan is out of date" in text(at)
+    assert primary(at) == ["Update study plan"]  # in the note, not twice
 
 
 @pytest.mark.parametrize(
     ("source", "reason", "expected"),
     [
-        pytest.param("baseline", None, "Built by the planner rules.", id="rules"),
+        pytest.param("model", None, "The AI model arranged this week", id="model"),
+        pytest.param("baseline", None, "calculated by the planning rules.", id="rules"),
         pytest.param(
             "baseline",
             "timeout",
-            "Built by the planner rules, because the AI model took too long.",
+            "calculated by the planning rules, because the AI model took too long.",
             id="fallback",
         ),
     ],
 )
-def test_the_page_says_who_built_the_plan(backend, source, reason, expected):
+def test_who_built_the_plan_is_in_the_details(backend, source, reason, expected):
     at = my_plan(backend, plan=PLAN | {"source": source, "fallback_reason": reason})
+    details = at.expander[-1]
 
-    assert expected in text(at)
+    assert details.label.endswith("Details")
+    assert expected in " ".join(c.value for c in details.caption)
+    assert "planned study time, not work already done" in " ".join(
+        c.value for c in details.caption
+    )
 
 
-def test_building_a_plan_waits_long_enough_and_shows_it(backend):
+def test_creating_a_plan_waits_long_enough_and_shows_it(backend):
     build = backend.post("/plan").mock(return_value=httpx.Response(200, json=PLAN))
     at = my_plan(backend, plan=None)
     backend.get("/plan").mock(return_value=httpx.Response(200, json=PLAN))
@@ -196,30 +252,33 @@ def test_building_a_plan_waits_long_enough_and_shows_it(backend):
     assert build.calls.last.request.headers["Authorization"] == f"Bearer {TOKEN}"
     timeout = build.calls.last.request.extensions["timeout"]
     assert timeout["read"] == PLAN_TIMEOUT.read == 100.0  # outlasts the backend's tries
-    assert at.success[0].value == "Your plan is ready."
-    assert "Sheet 3  ·  Automata  ·  2 h" in text(at)
+    assert at.success[0].value == "Your study plan is ready."
+    assert "Sheet 3" in week(at)
 
 
 @pytest.mark.parametrize(
-    ("status", "detail", "expected"),
+    ("status", "detail", "expected", "technical"),
     [
         pytest.param(
             503,
             "AI service unavailable",
-            "The planning service is not available right now. "
-            "Your saved plan is unchanged; try again in a minute.",
+            "Couldn't create a new plan right now. Your previous plan is kept. "
+            "Try again in a few minutes.",
+            "The AI service did not answer (503).",
             id="ai-down-503",
         ),
         pytest.param(
             502,
             "AI service returned invalid output",
-            "The planning service gave an answer that could not be used. "
-            "Your saved plan is unchanged.",
+            "Couldn't use the new plan. Your previous plan is kept.",
+            "The AI service's answer failed the backend's checks (502).",
             id="bad-answer-502",
         ),
     ],
 )
-def test_a_failed_build_keeps_the_saved_plan(backend, status, detail, expected):
+def test_a_failed_update_keeps_the_saved_plan(
+    backend, status, detail, expected, technical
+):
     backend.post("/plan").mock(
         return_value=httpx.Response(status, json={"detail": detail})
     )
@@ -229,7 +288,9 @@ def test_a_failed_build_keeps_the_saved_plan(backend, status, detail, expected):
 
     assert not at.exception
     assert at.error[0].value == expected
-    assert "Sheet 3  ·  Automata  ·  2 h" in text(at)  # the saved plan is still shown
+    tech = next(e for e in at.expander if e.label == "Technical details")
+    assert tech.caption[0].value == technical  # details only on demand
+    assert "Sheet 3" in week(at)  # the saved plan is still shown
 
 
 def test_backend_down_on_the_plan_page_shows_the_next_step(backend):
@@ -247,7 +308,7 @@ def test_backend_down_on_the_plan_page_shows_the_next_step(backend):
     assert "Cannot reach the backend" in at.error[0].value
 
 
-def test_study_hours_are_saved_as_the_backend_expects(backend):
+def test_free_time_is_saved_as_the_backend_expects(backend):
     save = backend.put("/constraints").mock(
         return_value=httpx.Response(200, json=SAVED)
     )
@@ -267,7 +328,7 @@ def test_study_hours_are_saved_as_the_backend_expects(backend):
         "blocked_dates": [blocked.isoformat()],
         "note": "Keep Thursday light",
     }
-    assert at.success[0].value == "Saved your study hours."
+    assert at.success[0].value == "Saved your free study time."
 
 
 def test_invalid_hours_are_shown_in_words(backend):
@@ -296,15 +357,39 @@ def test_the_plan_page_in_hebrew(backend):
             200, json={"id": 1, "email": "s@e.com", "language": "he"}
         )
     )
-    at = my_plan(backend)
+    short = assessed(
+        1, "Sheet 3", "shortfall", needed_hours=10, planned_hours=7.5,
+        missing_hours=2.5,
+    )  # fmt: skip
+    at = my_plan(backend, plan=PLAN | {"tasks": [short]})
     at.button_group(key="lang-picker").set_value("he").run()
 
-    assert at.button_group(key="page").options == ["התוכנית שלי", "משימות"]
-    assert at.button(key="build-plan").label == "בנייה מחדש"
-    assert "מודל ה-AI סידר את השבוע" in text(at)
+    assert at.button_group(key="page").options == [
+        "תוכנית לימוד שבועית",
+        "מטלות ומבחנים",
+    ]
+    assert primary(at) == ["עדכון תוכנית הלימוד"]
+    assert at.button(key="edit-hours").label == "זמן פנוי ללימודים"
+    assert "חסרות בתוכנית עוד שעתיים וחצי לפני ההגשה" in at.expander[0].label
+    assert "זמן פנוי: שעתיים" in week(at)
     # Bold that ends right before the separator's direction mark would not close
     # after a Hebrew date (it ends in ׳), and the ** would show on screen.
-    lines = [m.value for m in at.markdown if m.value.startswith("**")]
-    assert lines and not any("**\u200f" in line for line in lines)
+    assert not any("**\u200f" in e.label for e in at.expander)
     at.button(key="build-plan").click().run()
-    assert at.error[0].value.startswith("שירות התכנון לא זמין כרגע")
+    assert at.error[0].value.startswith("לא הצלחנו ליצור תוכנית חדשה כרגע")
+
+
+@pytest.mark.parametrize(
+    ("hours", "words"),
+    [(0.5, "חצי שעה"), (1, "שעה"), (1.5, "שעה וחצי"), (2, "שעתיים"), (3, "3 שעות")],
+)
+def test_hebrew_durations_read_naturally(hours, words):
+    import streamlit as st
+
+    from texts import duration
+
+    st.session_state["lang"] = "he"
+    try:
+        assert duration(hours) == words
+    finally:
+        st.session_state.pop("lang", None)

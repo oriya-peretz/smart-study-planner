@@ -149,6 +149,10 @@ st.html(
       .st-key-new-course button p { font-size: 6rem; font-weight: 200; line-height: 1;
                                     color: #B08D57; }
       .st-key-new-course button:hover p { color: #8A6D3B; }
+      /* The study plan's "out of date" note, with its one update button. */
+      .st-key-plan-outdated { background: #FAF3E6; border-radius: .7rem;
+                              padding: .5rem .5rem .5rem .9rem; }
+      .st-key-plan-outdated p { color: #5C4419; margin: 0; }
     </style>
     <div class="wordmark">Smart Study Planner</div><div class="gold-rule"></div>
     """
@@ -157,14 +161,16 @@ st.html(
 PAGES = {"tasks": "page_tasks", "plan": "page_plan"}
 VIEWS = {"course": "view_course", "urgency": "view_urgency"}
 
-page = st.segmented_control(
-    t("page"),
-    list(reversed(PAGES)) if is_rtl() else list(PAGES),
-    default="tasks",
-    format_func=lambda code: t(PAGES[code]),
-    key="page",
-    label_visibility="collapsed",
-)
+# The two screens, centered under the name: what each holds is its label.
+with st.container(horizontal=True, horizontal_alignment="center"):
+    page = st.segmented_control(
+        t("page"),
+        list(reversed(PAGES)) if is_rtl() else list(PAGES),
+        default="tasks",
+        format_func=lambda code: t(PAGES[code]),
+        key="page",
+        label_visibility="collapsed",
+    )
 page = page or "tasks"  # clicking the selected option again clears it
 
 if notice := st.session_state.pop("notice", None):
@@ -174,7 +180,7 @@ if page == "plan":
     plan_view.plan_page()
     st.stop()
 
-view_col, toggle_col, add_col = st.columns([2.2, 1.6, 1.2], vertical_alignment="center")
+view_col, toggle_col, add_col = st.columns([2, 1.6, 1.4], vertical_alignment="center")
 view = view_col.segmented_control(
     t("view"),
     list(reversed(VIEWS)) if is_rtl() else list(VIEWS),

@@ -325,7 +325,7 @@ def test_log_in_brings_back_the_accounts_language(backend):
     at.text_input(key="auth-password").input("a long password")
     at.button(key="auth-submit").click().run()
     assert at.session_state["lang"] == "he"
-    assert at.button(key="add-task").label == "הוספת משימה"
+    assert at.button(key="add-task").label == "הוספת מטלה או מבחן"
     assert is_right_to_left(at)
 
 
@@ -360,7 +360,7 @@ def test_switching_language_while_logged_in_saves_it_to_the_account(backend):
     label = at.expander[0].label
     assert "Exercise 3" in label  # what the user typed is never translated
     assert "עבודת בית" in label and "מחר" in label
-    assert at.button(key="add-task").label == "הוספת משימה"
+    assert at.button(key="add-task").label == "הוספת מטלה או מבחן"
 
 
 def test_backend_errors_are_shown_in_hebrew(backend):
@@ -447,6 +447,6 @@ def test_hebrew_by_course_lists_views_from_the_right_and_explains_the_plus(backe
     at.button_group(key="lang-picker").set_value("he").run()
     assert at.button_group(key="view").value == "course"  # the view survives the switch
     # Laid out left to right, so the reversed list puts "By course" on the right.
-    assert at.button_group(key="view").options == ["לפי דחיפות", "לפי קורס"]
+    assert at.button_group(key="view").options == ["לפי מועד", "לפי קורס"]
     assert at.button(key="new-course").help == "הוספת קורס חדש"
-    assert at.button(key="course-settings-1").label == "עריכת קורס"
+    assert at.button(key="course-settings-1").label == "עריכת הקורס"
